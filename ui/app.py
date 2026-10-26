@@ -142,6 +142,8 @@ class App(tk.Tk):
 
     def _build(self) -> None:
         self.bg_path = background.load_path()
+        self.bg_darken, self.bg_blur = background.load_look()
+        self._bg_src = None  # source image, opened once (4K files are not re-read on every resize)
         self._bg_photo = None
         self._side_photo = None
         self._bg_size = (0, 0)
@@ -174,15 +176,11 @@ class App(tk.Tk):
         self.status.trace_add("write", lambda *_a: side.itemconfigure(self._status_item, text=self.status.get()))
         self.progress = ttk.Progressbar(side, mode="indeterminate", length=190)
         self._progress_item = side.create_window(18, 0, window=self.progress, anchor="w")
-        self._bg_link = side.create_text(18, 0, text="🖼  Change background…", anchor="w", fill=theme.INFO,
+        self._bg_link = side.create_text(18, 0, text="⚙  Appearance…", anchor="w", fill=theme.INFO,
                                          font=(theme.FONT[0], 10), tags=("bglink",))
-        self._bg_clear = side.create_text(18, 0, text="✕  Remove background", anchor="w", fill=theme.MUTED,
-                                          font=(theme.FONT[0], 9), tags=("bgclear",))
-        side.tag_bind("bglink", "<Button-1>", lambda _e: self.choose_background())
-        side.tag_bind("bgclear", "<Button-1>", lambda _e: self.clear_background())
-        for t in ("bglink", "bgclear"):
-            side.tag_bind(t, "<Enter>", lambda _e: side.configure(cursor="hand2"))
-            side.tag_bind(t, "<Leave>", lambda _e: side.configure(cursor=""))
+        side.tag_bind("bglink", "<Button-1>", lambda _e: self.open_appearance())
+        side.tag_bind("bglink", "<Enter>", lambda _e: side.configure(cursor="hand2"))
+        side.tag_bind("bglink", "<Leave>", lambda _e: side.configure(cursor=""))
         side.bind("<Configure>", self._layout_side)
 
         main = ttk.Frame(self)
@@ -246,8 +244,7 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- background image
     def _layout_side(self, _e=None) -> None:
         h = self.side.winfo_height()
-        self.side.coords(self._bg_link, 18, h - 96)
-        self.side.coords(self._bg_clear, 18, h - 72)
+        self.side.coords(self._bg_link, 18, h - 72)
         self.side.coords(self._status_item, 18, h - 44)
         self.side.coords(self._progress_item, 18, h - 20)
 
@@ -258,13 +255,63 @@ class App(tk.Tk):
         if not path:
             return
         self.bg_path = path
+        self._bg_src = None
         background.save_path(path)
         self.apply_background(force=True)
 
     def clear_background(self) -> None:
         self.bg_path = ""
+        self._bg_src = None
         background.save_path("")
         self.apply_background(force=True)
+
+    def open_appearance(self) -> None:
+        dlg = tk.Toplevel(self)
+        dlg.title("Appearance")
+        dlg.transient(self)
+        dlg.configure(bg=self.cget("bg"))
+        f = ttk.Frame(dlg, padding=16)
+        f.pack(fill="both", expand=True)
+        ttk.Label(f, text="Background image", font=(theme.FONT[0], 11, "bold")).grid(row=0, column=0, columnspan=3,
+                                                                                    sticky="w")
+        name = Path(self.bg_path).name if self.bg_path else "(none)"
+        lab = ttk.Label(f, text=name, foreground=theme.MUTED)
+        lab.grid(row=1, column=0, columnspan=3, sticky="w", pady=(2, 8))
+
+        def pick():
+            self.choose_background()
+            lab.configure(text=Path(self.bg_path).name if self.bg_path else "(none)")
+
+        def clear():
+            self.clear_background()
+            lab.configure(text="(none)")
+
+        ttk.Button(f, text="Choose image…", command=pick).grid(row=2, column=0, sticky="w")
+        ttk.Button(f, text="Remove", command=clear).grid(row=2, column=1, sticky="w", padx=8)
+
+        v_dark = tk.DoubleVar(value=self.bg_darken)
+        v_blur = tk.DoubleVar(value=self.bg_blur)
+
+        def changed(_e=None):
+            self.bg_darken, self.bg_blur = round(v_dark.get(), 2), round(v_blur.get(), 1)
+            background.save_look(self.bg_darken, self.bg_blur)
+            self.apply_background(force=True)
+
+        ttk.Label(f, text="Brightness (1.0 = original)").grid(row=3, column=0, columnspan=3, sticky="w", pady=(14, 0))
+        s1 = ttk.Scale(f, from_=0.15, to=1.0, variable=v_dark, length=300)
+        s1.grid(row=4, column=0, columnspan=3, sticky="we")
+        ttk.Label(f, text="Blur (0 = sharp, original detail)").grid(row=5, column=0, columnspan=3, sticky="w",
+                                                                     pady=(10, 0))
+        s2 = ttk.Scale(f, from_=0, to=8, variable=v_blur, length=300)
+        s2.grid(row=6, column=0, columnspan=3, sticky="we")
+        for sc in (s1, s2):
+            sc.bind("<ButtonRelease-1>", changed)  # re-render on release (4K images are heavy to redo live)
+        ttk.Label(f, foreground=theme.MUTED, wraplength=320, justify="left", text=(
+            "Any size works, including 4K. The image is scaled to your window with a high-quality filter; "
+            "set blur to 0 and brightness near 1.0 to keep it as close to the original as possible "
+            "(text becomes harder to read on busy pictures).")).grid(row=7, column=0, columnspan=3, sticky="w",
+                                                                  pady=(12, 8))
+        ttk.Button(f, text="Close", command=dlg.destroy).grid(row=8, column=0, sticky="w")
 
     def apply_background(self, force: bool = False) -> None:
         w, h = max(self.winfo_width(), 1000), max(self.winfo_height(), 700)
@@ -277,7 +324,12 @@ class App(tk.Tk):
             self.bg_label.configure(image="")
             return
         try:
-            img = background.render(self.bg_path, w, h)
+            if self._bg_src is None:
+                from PIL import Image
+
+                self._bg_src = Image.open(self.bg_path)
+                self._bg_src.load()
+            img = background.render(self._bg_src, w, h, self.bg_darken, self.bg_blur)
             self._bg_photo = tk.PhotoImage(data=background.to_tk_data(img))
             side_img = img.crop((0, 0, self.SIDE_W, h))
             from PIL import ImageEnhance

@@ -25,7 +25,7 @@ python main.py --demo   # simulated TV (pip install pillow)
 
 - Python 3.9+ with Tkinter. Linux: `sudo apt install python3-tk` · macOS: `brew install python-tk`.
 - Optional modern dark theme: `pip install sv-ttk` (without it the default look is used).
-- Custom background: press "Change background…" in the sidebar and pick any image (needs `pip install pillow`; remembered in `~/.tv-debloat/config.json`).
+- Custom background: sidebar → "Appearance…" → choose any image, including 4K (needs `pip install pillow`). Sliders for brightness and blur (blur 0 + brightness 1.0 = closest to the original). Remembered in `~/.tv-debloat/config.json`.
 - `adb` is looked up on the PATH; if missing, the **Install adb** button downloads Google's official
   platform-tools into the program folder.
 - macOS: if `adb` says "No route to host" (Local Network privacy), the program falls back to the
