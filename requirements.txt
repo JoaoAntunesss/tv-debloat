@@ -1,2 +1,4 @@
 # Opcional: só é preciso no macOS quando o adb dá "No route to host"
 adb-shell>=0.4.4
+# Opcional: só para --demo e para gerar capturas
+pillow>=10

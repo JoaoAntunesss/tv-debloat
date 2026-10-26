@@ -15,8 +15,24 @@ python main.py
 - macOS: se o `adb` der "No route to host" (privacidade de Rede Local), o programa passa sozinho para o
   cliente Python `adb-shell` (`pip install adb-shell`). O pareamento por código só funciona com o `adb`.
 
-## Fluxo (cada separador desbloqueia o seguinte)
+Para experimentar sem TV: `pip install pillow` e `python main.py --demo` (TV simulada, não toca em nada real).
 
+## Capturas
+
+> Capturas da interface real contra uma **TV simulada** (modo `--demo`), não de uma TV física.
+> Regenerar: `DISPLAY=:99 python tools/make_screenshots.py docs/screenshots` (precisa de Xvfb, ImageMagick e Pillow).
+
+| | |
+|---|---|
+| ![Preparar](docs/screenshots/0-preparar.png) **0 · Preparar** | ![Ligar](docs/screenshots/1-ligar.png) **1 · Ligar** |
+| ![Backup](docs/screenshots/2-backup.png) **2 · Backup** | ![Pacotes](docs/screenshots/3-pacotes.png) **3 · Pacotes** |
+| ![Verificação](docs/screenshots/4-verificacao.png) **Verificação após cada lote** | ![Final](docs/screenshots/5-final.png) **5 · Final** |
+| ![Anúncios e apps](docs/screenshots/6-anuncios-apps.png) **6 · Anúncios e apps** | ![Sem ADB](docs/screenshots/0b-samsung-sem-adb.png) **TV sem ADB (Samsung)** |
+
+## Fluxo (7 separadores; cada um desbloqueia o seguinte, e um aviso verde diz sempre o próximo passo)
+
+0. **Preparar** – escolhes sistema e marca e vais marcando o que já fizeste: mesma rede Wi-Fi, ativar o modo
+   de programador (7 toques no número de compilação), depuração USB/sem fios, descobrir o IP. Para TVs sem ADB mostra o guia de rede.
 1. **Ligar** – IP da TV, o que está nas portas USB, pareamento (Android 11+) e aprovar o diálogo na TV.
 2. **Backup** – guarda pacotes, desativados, `getprop`, definições global/secure/system e `dumpsys meminfo`
    na pasta `tv-debloat`, e cria logo `restore.sh` (ou `restore.ps1` no Windows).

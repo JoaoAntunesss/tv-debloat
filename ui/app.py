@@ -15,6 +15,7 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 from core.adb import Adb, AdbError, CliBackend, find_adb, install_platform_tools, port_open
 from core.apps import CATALOG, ApkError, validate_apk
 from core.guard import CommandRefused
+from core.guide import NEXT, PREP_STEPS
 from core.packages import GROUP_LABELS, SETUP_WIZARD
 from core.profiles import BRANDS, PLATFORMS, get_brand, network_guide
 from core.session import MAX_BATCH, DebloatSession, SessionError
@@ -24,7 +25,7 @@ from ui.widgets import ScrollFrame, VerifyDialog, safe_grab
 APP_DIR = Path(__file__).resolve().parent.parent
 IPV4 = re.compile(r"^(\d{1,3})(\.\d{1,3}){3}$")
 GROUP_ORDER = [1, 2, 3, 4, 5, 0, 6]
-TAB_CONNECT, TAB_BACKUP, TAB_PACKAGES, TAB_HOME, TAB_FINAL, TAB_EXTRAS = range(6)
+TAB_START, TAB_CONNECT, TAB_BACKUP, TAB_PACKAGES, TAB_HOME, TAB_FINAL, TAB_EXTRAS = range(7)
 
 RULES_TEXT = (
     "O que este programa NUNCA faz: desinstalar (só 'pm disable-user --user 0', reversível com 'pm enable'), "
@@ -51,6 +52,7 @@ class App(tk.Tk):
         self.batches: list[list[str]] = []
         self.batch_no = 0
         self.model_info = ""
+        self.sleep_fn = time.sleep  # o modo demonstração troca por esperas curtas
 
         self._build()
         self.after(80, self._poll)
@@ -135,14 +137,19 @@ class App(tk.Tk):
     def _build(self) -> None:
         ttk.Label(self, text=RULES_TEXT, wraplength=1080, foreground="#8a2be2", justify="left").pack(
             fill="x", padx=10, pady=(8, 2))
+        self.next_step = tk.StringVar(value=NEXT["start"])
+        banner = tk.Label(self, textvariable=self.next_step, wraplength=1080, justify="left", anchor="w",
+                          bg="#e6f4ea", fg="#14532d", padx=10, pady=6, font=("TkDefaultFont", 10, "bold"))
+        banner.pack(fill="x", padx=8, pady=(2, 4))
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill="both", expand=True, padx=8, pady=4)
         frames = []
-        for title in ("1 · Ligar", "2 · Backup", "3 · Pacotes", "4 · Ecrã inicial", "5 · Final",
+        for title in ("0 · Preparar", "1 · Ligar", "2 · Backup", "3 · Pacotes", "4 · Ecrã inicial", "5 · Final",
                       "6 · Anúncios e apps"):
             f = ttk.Frame(self.nb, padding=10)
             self.nb.add(f, text=title)
             frames.append(f)
+        self._build_start(frames[TAB_START])
         self._build_connect(frames[TAB_CONNECT])
         self._build_backup(frames[TAB_BACKUP])
         self._build_packages(frames[TAB_PACKAGES])
@@ -162,9 +169,15 @@ class App(tk.Tk):
         ttk.Label(bar, textvariable=self.status).pack(side="left")
         self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
         self.progress.pack(side="right")
+        self.on_platform_change()  # só agora existem todos os widgets de que depende
+        self.nb.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-    # ---------------------------------------------------------------- 1 Ligar
-    def _build_connect(self, f) -> None:
+    def _on_tab_changed(self, _e=None) -> None:
+        if self.nb.index("current") == TAB_FINAL and self.session:
+            self.set_next(NEXT["final"])
+
+    # ---------------------------------------------------------------- 0 Preparar / 1 Ligar
+    def _build_start(self, f) -> None:
         prof = ttk.LabelFrame(f, text="Que TV tens? (escolhe o sistema e a marca)")
         prof.pack(fill="x", pady=(0, 8))
         self._prof_frame = prof
@@ -182,8 +195,52 @@ class App(tk.Tk):
                   foreground="#8a5a00").grid(row=1, column=0, columnspan=4, padx=6, pady=4, sticky="w")
         self.cb_platform.bind("<<ComboboxSelected>>", self.on_platform_change)
         self.cb_brand.bind("<<ComboboxSelected>>", self.on_brand_change)
-        self.guide_box = scrolledtext.ScrolledText(f, height=11, wrap="word")
 
+        self.prep_frame = ttk.LabelFrame(f, text="Antes de começar — vai marcando o que já fizeste (na própria TV)")
+        self.prep_frame.pack(fill="both", expand=True, pady=4)
+        self.prep_vars: list[tk.BooleanVar] = []
+        self.guide_box = scrolledtext.ScrolledText(f, height=11, wrap="word")
+        self.btn_prep_go = ttk.Button(f, text="Já fiz tudo → ir para 1 · Ligar", command=self._go_connect)
+        self.btn_prep_go.pack(anchor="w", pady=6)
+
+    def _render_prep(self) -> None:
+        for w in self.prep_frame.winfo_children():
+            w.destroy()
+        self.prep_vars = []
+        steps = PREP_STEPS.get(self._platform().key, [])
+        if not steps:
+            ttk.Label(self.prep_frame, text="Para esta TV não há preparação por ADB: vê o guia abaixo.").pack(
+                anchor="w", padx=8, pady=8)
+        for i, (title, detail) in enumerate(steps, 1):
+            v = tk.BooleanVar(value=False)
+            v.trace_add("write", lambda *_a: self._prep_changed())
+            self.prep_vars.append(v)
+            ttk.Checkbutton(self.prep_frame, text=f"{i}. {title}", variable=v).pack(anchor="w", padx=8, pady=(6, 0))
+            ttk.Label(self.prep_frame, text=detail, wraplength=1020, justify="left", foreground="gray").pack(
+                anchor="w", padx=34)
+        self.btn_prep_go.configure(state="normal" if steps else "disabled")
+        self._prep_changed()
+
+    def _prep_changed(self) -> None:
+        if self._platform().adb and self.prep_vars and all(v.get() for v in self.prep_vars):
+            self.set_next(NEXT["prep_done"])
+        elif self._platform().adb:
+            self.set_next(NEXT["start"])
+
+    def _go_connect(self) -> None:
+        if self.prep_vars and not all(v.get() for v in self.prep_vars):
+            if not messagebox.askyesno(
+                "Preparação incompleta",
+                "Ainda há passos por marcar. Sem a depuração ligada e sem a mesma rede a ligação vai falhar.\n\n"
+                "Ir para o separador 1 mesmo assim?", parent=self):
+                return
+        self.nb.select(TAB_CONNECT)
+
+    def set_next(self, text: str) -> None:
+        self.next_step.set(text)
+
+    # ---------------------------------------------------------------- 1 Ligar
+    def _build_connect(self, f) -> None:
         self.adb_status = tk.StringVar()
         row = ttk.Frame(f)
         row.pack(fill="x")
@@ -226,7 +283,6 @@ class App(tk.Tk):
         self.btn_connect = ttk.Button(f, text="Ligar à TV", command=self.do_connect)
         self.btn_connect.pack(anchor="w", pady=6)
         ttk.Label(f, textvariable=self.conn_msg, foreground="#1a5fb4", wraplength=1050).pack(anchor="w")
-        self.on_platform_change()
 
     def _platform(self):
         for p in PLATFORMS.values():
@@ -245,17 +301,19 @@ class App(tk.Tk):
         b = get_brand(p.key, self.v_brand.get())
         lines = list(p.notes) + (list(b.notes) if b else [])
         self.profile_msg.set("\n".join("• " + line for line in lines))
+        self._render_prep()
         if p.adb:
             self.guide_box.pack_forget()
             self.btn_connect.configure(state="normal")
             if self.conn_msg.get().startswith("Esta TV não permite"):
                 self.conn_msg.set("Ainda não estás ligado.")
         else:
+            self.set_next(NEXT["no_adb"])
             self.guide_box.configure(state="normal")
             self.guide_box.delete("1.0", "end")
             self.guide_box.insert("end", network_guide(p.key))
             self.guide_box.configure(state="disabled")
-            self.guide_box.pack(fill="x", pady=4, after=self._prof_frame)
+            self.guide_box.pack(fill="x", pady=4, after=self.prep_frame)
             self.btn_connect.configure(state="disabled")
             self.conn_msg.set("Esta TV não permite ADB: segue o guia acima (ação ao nível da rede e das definições da TV).")
 
@@ -327,6 +385,7 @@ class App(tk.Tk):
             f"via {self.adb.backend_name}). Passa ao separador 2.")
         self.nb.tab(TAB_BACKUP, state="normal")
         self.nb.select(TAB_BACKUP)
+        self.set_next(NEXT["connected"])
 
     # ---------------------------------------------------------------- 2 Backup
     def _build_backup(self, f) -> None:
@@ -355,17 +414,21 @@ class App(tk.Tk):
         platform_ = self._platform()
         brand = get_brand(platform_.key, self.v_brand.get())
         self.ws = Workspace(base, target)
-        self.session = DebloatSession(self.adb, self.ws, log=self.log, brand=brand, platform=platform_)
+        self.session = DebloatSession(self.adb, self.ws, log=self.log, sleep=self.sleep_fn,
+                                      brand=brand, platform=platform_)
+
+        # Ler as variáveis do Tk aqui (thread principal): o Tk não é seguro a partir de threads de fundo.
+        header = {
+            "Sistema": platform_.name,
+            "Marca": brand.name if brand else "?",
+            "TV": self.v_model.get().strip() or self.model_info or "?",
+            "IP": target,
+            "Portas USB": self.v_usb.get().strip(),
+            "Computador": platform.platform(),
+        }
 
         def work():
-            self.ws.log_header({
-                "Sistema": platform_.name,
-                "Marca": brand.name if brand else "?",
-                "TV": self.v_model.get().strip() or self.model_info or "?",
-                "IP": target,
-                "Portas USB": self.v_usb.get().strip(),
-                "Computador": platform.platform(),
-            })
+            self.ws.log_header(header)
             bdir = self.session.backup()
             self.session.scan()
             return bdir
@@ -392,6 +455,7 @@ class App(tk.Tk):
         self.cb_brand.configure(state="disabled")
         self.refresh_tree()
         self.nb.select(TAB_PACKAGES)
+        self.set_next(NEXT["backup_done"])
 
     # ---------------------------------------------------------------- 3 Pacotes
     def _build_packages(self, f) -> None:
@@ -642,6 +706,7 @@ class App(tk.Tk):
     def _run_next(self) -> None:
         if not self.batches:
             self.log("Fila concluída.")
+            self.set_next(NEXT["queue_done"])
             self.rescan()
             return
         batch = self.batches.pop(0)
@@ -660,6 +725,7 @@ class App(tk.Tk):
             self.batches = []
         if not res.ok:
             return
+        self.set_next(NEXT["verify"])
         VerifyDialog(
             self, res.ok, mode="decide",
             on_ok=lambda: self._run_next(),
@@ -767,7 +833,7 @@ class App(tk.Tk):
         def work():
             self.session.reboot_and_wait()
             self.session.press("KEYCODE_HOME")
-            time.sleep(2.5)
+            self.session.sleep(2.5)
             return self.session.default_home(), self.session.focus()
 
         def done(res):

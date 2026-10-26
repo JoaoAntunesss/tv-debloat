@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -139,7 +138,7 @@ class VerifyDialog(tk.Toplevel):
         def work():
             s = self.app.session
             s.press(code)
-            time.sleep(1.5)
+            s.sleep(1.5)
             return (None, f"Tecla {code} enviada.", s.screenshot("tecla"))
 
         self.app.bg(work, ok=self._show)
