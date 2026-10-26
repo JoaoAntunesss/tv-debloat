@@ -12,7 +12,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
-from ui import theme
+from ui import background, theme
 from core.adb import Adb, AdbError, CliBackend, find_adb, install_platform_tools, port_open
 from core.apps import CATALOG, ApkError, validate_apk
 from core.guard import CommandRefused
@@ -138,34 +138,55 @@ class App(tk.Tk):
     # =============================================================== construction
     NAV_TITLES = ("Prepare", "Connect", "Backup", "Packages", "Home screen", "Final", "Ads & apps")
 
+    SIDE_W = 230
+
     def _build(self) -> None:
-        side = tk.Frame(self, bg=theme.SIDE, width=230)
+        self.bg_path = background.load_path()
+        self._bg_photo = None
+        self._side_photo = None
+        self._bg_size = (0, 0)
+        self._bg_job = None
+        self.bg_label = tk.Label(self, bd=0, bg=self.cget("bg"))
+        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        self.bg_label.lower()
+
+        side = self.side = tk.Canvas(self, width=self.SIDE_W, highlightthickness=0, bg=theme.SIDE)
         side.pack(side="left", fill="y")
-        side.pack_propagate(False)
-        tk.Label(side, text="TV DEBLOAT", bg=theme.SIDE, fg=theme.ACCENT,
-                 font=(theme.FONT[0], 16, "bold")).pack(anchor="w", padx=18, pady=(20, 0))
-        tk.Label(side, text="safe · reversible cleanup", bg=theme.SIDE, fg=theme.MUTED,
-                 font=(theme.FONT[0], 9)).pack(anchor="w", padx=18, pady=(0, 18))
+        side.create_text(18, 34, text="TV DEBLOAT", anchor="w", fill=theme.ACCENT, font=(theme.FONT[0], 16, "bold"))
+        side.create_text(18, 58, text="safe · reversible cleanup", anchor="w", fill=theme.MUTED,
+                         font=(theme.FONT[0], 9))
         self.nav = []
         for i, title in enumerate(self.NAV_TITLES):
-            row = tk.Frame(side, bg=theme.SIDE, cursor="hand2")
-            row.pack(fill="x", padx=10, pady=2)
-            num = tk.Label(row, text=str(i), bg=theme.SIDE, fg=theme.MUTED, width=2,
-                           font=(theme.FONT[0], 11, "bold"))
-            num.pack(side="left", padx=(8, 4), pady=8)
-            lab = tk.Label(row, text=title, bg=theme.SIDE, fg=theme.TEXT, anchor="w", font=(theme.FONT[0], 11))
-            lab.pack(side="left", fill="x", expand=True)
-            for w in (row, num, lab):
-                w.bind("<Button-1>", lambda _e, i=i: self._nav_click(i))
-            self.nav.append((row, num, lab))
+            y = 88 + i * 44
+            tag = f"nav{i}"
+            rect = side.create_rectangle(10, y, self.SIDE_W - 10, y + 38, width=0, tags=(tag,))
+            num = side.create_text(28, y + 19, text=str(i), fill=theme.MUTED, font=(theme.FONT[0], 11, "bold"),
+                                   tags=(tag,))
+            lab = side.create_text(48, y + 19, text=title, anchor="w", fill=theme.TEXT, font=(theme.FONT[0], 11),
+                                   tags=(tag,))
+            side.tag_bind(tag, "<Button-1>", lambda _e, i=i: self._nav_click(i))
+            side.tag_bind(tag, "<Enter>", lambda _e: side.configure(cursor="hand2"))
+            side.tag_bind(tag, "<Leave>", lambda _e: side.configure(cursor=""))
+            self.nav.append((rect, num, lab))
         self.status = tk.StringVar(value="Ready.")
+        self._status_item = side.create_text(18, 0, text="Ready.", anchor="w", fill=theme.MUTED,
+                                             font=(theme.FONT[0], 9), width=self.SIDE_W - 36)
+        self.status.trace_add("write", lambda *_a: side.itemconfigure(self._status_item, text=self.status.get()))
         self.progress = ttk.Progressbar(side, mode="indeterminate", length=190)
-        self.progress.pack(side="bottom", padx=18, pady=(4, 16))
-        tk.Label(side, textvariable=self.status, bg=theme.SIDE, fg=theme.MUTED, wraplength=190, justify="left",
-                 font=(theme.FONT[0], 9)).pack(side="bottom", anchor="w", padx=18)
+        self._progress_item = side.create_window(18, 0, window=self.progress, anchor="w")
+        self._bg_link = side.create_text(18, 0, text="🖼  Change background…", anchor="w", fill=theme.INFO,
+                                         font=(theme.FONT[0], 10), tags=("bglink",))
+        self._bg_clear = side.create_text(18, 0, text="✕  Remove background", anchor="w", fill=theme.MUTED,
+                                          font=(theme.FONT[0], 9), tags=("bgclear",))
+        side.tag_bind("bglink", "<Button-1>", lambda _e: self.choose_background())
+        side.tag_bind("bgclear", "<Button-1>", lambda _e: self.clear_background())
+        for t in ("bglink", "bgclear"):
+            side.tag_bind(t, "<Enter>", lambda _e: side.configure(cursor="hand2"))
+            side.tag_bind(t, "<Leave>", lambda _e: side.configure(cursor=""))
+        side.bind("<Configure>", self._layout_side)
 
         main = ttk.Frame(self)
-        main.pack(side="left", fill="both", expand=True)
+        main.pack(side="left", fill="both", expand=True, padx=14, pady=14)
         self.next_step = tk.StringVar(value=NEXT["start"])
         banner = tk.Label(main, textvariable=self.next_step, wraplength=860, justify="left", anchor="w",
                           bg="#10382b", fg=theme.ACCENT, padx=14, pady=10, font=(theme.FONT[0], 10, "bold"))
@@ -195,6 +216,9 @@ class App(tk.Tk):
         ttk.Label(main, text=RULES_TEXT, wraplength=860, foreground=theme.VIOLET, justify="left").pack(
             fill="x", padx=12, pady=(2, 8))
         self._refresh_nav()
+        self._layout_side()
+        self.bind("<Configure>", self._on_root_configure)
+        self.after(200, lambda: self.apply_background(force=True))
         self.on_platform_change()  # only now do all the widgets it depends on exist
         self.nb.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
@@ -204,16 +228,78 @@ class App(tk.Tk):
 
     def _refresh_nav(self) -> None:
         cur = self.nb.index("current")
-        for i, (row, num, lab) in enumerate(self.nav):
+        has_bg = bool(self._bg_photo)
+        for i, (rect, num, lab) in enumerate(self.nav):
             on = str(self.nb.tab(i, "state")) == "normal"
             active = i == cur
-            bg = "#1d2a27" if active else theme.SIDE
-            fg = theme.ACCENT if active else (theme.TEXT if on else "#4a5063")
-            for w in (row, num, lab):
-                w.configure(bg=bg)
-            num.configure(fg=fg if active else (theme.MUTED if on else "#3a3f50"))
-            lab.configure(fg=fg)
+            if active:
+                self.side.itemconfigure(rect, fill="#1d2a27", stipple="")
+            elif has_bg:
+                self.side.itemconfigure(rect, fill="black", stipple="gray25")
+            else:
+                self.side.itemconfigure(rect, fill=theme.SIDE, stipple="")
+            fg = theme.ACCENT if active else (theme.TEXT if on else "#5a6178")
+            self.side.itemconfigure(lab, fill=fg)
+            self.side.itemconfigure(num, fill=fg if active else (theme.MUTED if on else "#4a5063"))
         self.after(300, self._refresh_nav)
+
+    # ---------------------------------------------------------------- background image
+    def _layout_side(self, _e=None) -> None:
+        h = self.side.winfo_height()
+        self.side.coords(self._bg_link, 18, h - 96)
+        self.side.coords(self._bg_clear, 18, h - 72)
+        self.side.coords(self._status_item, 18, h - 44)
+        self.side.coords(self._progress_item, 18, h - 20)
+
+    def choose_background(self) -> None:
+        path = filedialog.askopenfilename(
+            parent=self, title="Choose a background image",
+            filetypes=[("Images", "*.png *.jpg *.jpeg *.bmp *.gif *.webp"), ("All files", "*.*")])
+        if not path:
+            return
+        self.bg_path = path
+        background.save_path(path)
+        self.apply_background(force=True)
+
+    def clear_background(self) -> None:
+        self.bg_path = ""
+        background.save_path("")
+        self.apply_background(force=True)
+
+    def apply_background(self, force: bool = False) -> None:
+        w, h = max(self.winfo_width(), 1000), max(self.winfo_height(), 700)
+        if not force and (w, h) == self._bg_size:
+            return
+        self._bg_size = (w, h)
+        self.side.delete("bgimg")
+        if not self.bg_path:
+            self._bg_photo = self._side_photo = None
+            self.bg_label.configure(image="")
+            return
+        try:
+            img = background.render(self.bg_path, w, h)
+            self._bg_photo = tk.PhotoImage(data=background.to_tk_data(img))
+            side_img = img.crop((0, 0, self.SIDE_W, h))
+            from PIL import ImageEnhance
+
+            side_img = ImageEnhance.Brightness(side_img).enhance(0.6)
+            self._side_photo = tk.PhotoImage(data=background.to_tk_data(side_img))
+        except Exception as e:  # noqa: BLE001 - missing Pillow, unreadable image…
+            self.bg_path = ""
+            self._bg_photo = self._side_photo = None
+            self.bg_label.configure(image="")
+            self.log(f"Could not use that background image ({e}). Demo/background needs: pip install pillow")
+            return
+        self.bg_label.configure(image=self._bg_photo)
+        self.side.create_image(0, 0, image=self._side_photo, anchor="nw", tags="bgimg")
+        self.side.tag_lower("bgimg")
+
+    def _on_root_configure(self, e) -> None:
+        if e.widget is not self or not self.bg_path:
+            return
+        if self._bg_job:
+            self.after_cancel(self._bg_job)
+        self._bg_job = self.after(250, self.apply_background)
 
     def _on_tab_changed(self, _e=None) -> None:
         if self.nb.index("current") == TAB_FINAL and self.session:
