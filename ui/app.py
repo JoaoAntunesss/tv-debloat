@@ -40,6 +40,12 @@ class App(tk.Tk):
         self.title("TV Debloat — limpeza segura de Android TV por ADB")
         self.geometry("1140x860")
         self.minsize(980, 720)
+        try:  # tema moderno, opcional (pip install sv-ttk); sem ele fica o aspeto padrão
+            import sv_ttk
+
+            sv_ttk.set_theme("light")
+        except Exception:
+            pass
 
         self.q: queue.Queue = queue.Queue()
         self._busy = 0

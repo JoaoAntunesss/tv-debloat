@@ -2,3 +2,5 @@
 adb-shell>=0.4.4
 # Opcional: só para --demo e para gerar capturas
 pillow>=10
+# Opcional: tema moderno da interface
+sv-ttk>=2.6
