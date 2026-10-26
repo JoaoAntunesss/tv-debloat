@@ -6,10 +6,13 @@ import tkinter as tk
 from tkinter import ttk
 
 
+from ui import theme  # noqa: E402
+
+
 class ScrollFrame(ttk.Frame):
     def __init__(self, parent, height=320):
         super().__init__(parent)
-        canvas = tk.Canvas(self, height=height, highlightthickness=0)
+        canvas = tk.Canvas(self, height=height, highlightthickness=0, bg=theme.BG)
         bar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
         self.inner = ttk.Frame(canvas)
         self.inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
@@ -69,7 +72,7 @@ class VerifyDialog(tk.Toplevel):
         ).pack(padx=10, pady=(10, 4), anchor="w")
 
         self.result = tk.StringVar(value="A verificar o ecrã inicial e a tirar uma captura…")
-        ttk.Label(self, textvariable=self.result, wraplength=720, foreground="#1a5fb4").pack(padx=10, anchor="w")
+        ttk.Label(self, textvariable=self.result, wraplength=720, foreground=theme.INFO).pack(padx=10, anchor="w")
         self.img_label = ttk.Label(self, text="(sem imagem ainda)")
         self.img_label.pack(padx=10, pady=6)
 

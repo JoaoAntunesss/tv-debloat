@@ -50,7 +50,7 @@ def dialogs(app):
 
 app = App()
 enable_demo(app)
-app.geometry("1140x900+0+0")
+app.geometry("1280x900+0+0")
 settle(app)
 
 # 0 · Preparar (com alguns passos já marcados)

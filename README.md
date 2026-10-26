@@ -9,7 +9,7 @@ de forma **reversível**: anúncios, recomendações, telemetria e apps que nunc
 python main.py
 ```
 
-- Python 3.9+ com Tkinter. Linux: `sudo apt install python3-tk` · macOS: `brew install python-tk`.
+- Python 3.9+ com Tkinter. Para o aspeto escuro moderno: `pip install sv-ttk` (opcional; sem ele fica o aspeto padrão). Linux: `sudo apt install python3-tk` · macOS: `brew install python-tk`.
 - O `adb` é procurado no PATH; se não existir, o botão **Instalar adb** descarrega o platform-tools
   oficial da Google para a pasta do programa.
 - macOS: se o `adb` der "No route to host" (privacidade de Rede Local), o programa passa sozinho para o

@@ -12,6 +12,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
 
+from ui import theme
 from core.adb import Adb, AdbError, CliBackend, find_adb, install_platform_tools, port_open
 from core.apps import CATALOG, ApkError, validate_apk
 from core.guard import CommandRefused
@@ -38,14 +39,9 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("TV Debloat — limpeza segura de Android TV por ADB")
-        self.geometry("1140x860")
-        self.minsize(980, 720)
-        try:  # tema moderno, opcional (pip install sv-ttk); sem ele fica o aspeto padrão
-            import sv_ttk
-
-            sv_ttk.set_theme("light")
-        except Exception:
-            pass
+        self.geometry("1280x900")
+        self.minsize(1100, 760)
+        theme.apply(self)
 
         self.q: queue.Queue = queue.Queue()
         self._busy = 0
@@ -140,18 +136,44 @@ class App(tk.Tk):
         messagebox.showerror(title, str(e), parent=self)
 
     # =============================================================== construção
+    NAV_TITLES = ("Preparar", "Ligar", "Backup", "Pacotes", "Ecrã inicial", "Final", "Anúncios e apps")
+
     def _build(self) -> None:
-        ttk.Label(self, text=RULES_TEXT, wraplength=1080, foreground="#8a2be2", justify="left").pack(
-            fill="x", padx=10, pady=(8, 2))
+        side = tk.Frame(self, bg=theme.SIDE, width=230)
+        side.pack(side="left", fill="y")
+        side.pack_propagate(False)
+        tk.Label(side, text="TV DEBLOAT", bg=theme.SIDE, fg=theme.ACCENT,
+                 font=(theme.FONT[0], 16, "bold")).pack(anchor="w", padx=18, pady=(20, 0))
+        tk.Label(side, text="limpeza segura · reversível", bg=theme.SIDE, fg=theme.MUTED,
+                 font=(theme.FONT[0], 9)).pack(anchor="w", padx=18, pady=(0, 18))
+        self.nav = []
+        for i, title in enumerate(self.NAV_TITLES):
+            row = tk.Frame(side, bg=theme.SIDE, cursor="hand2")
+            row.pack(fill="x", padx=10, pady=2)
+            num = tk.Label(row, text=str(i), bg=theme.SIDE, fg=theme.MUTED, width=2,
+                           font=(theme.FONT[0], 11, "bold"))
+            num.pack(side="left", padx=(8, 4), pady=8)
+            lab = tk.Label(row, text=title, bg=theme.SIDE, fg=theme.TEXT, anchor="w", font=(theme.FONT[0], 11))
+            lab.pack(side="left", fill="x", expand=True)
+            for w in (row, num, lab):
+                w.bind("<Button-1>", lambda _e, i=i: self._nav_click(i))
+            self.nav.append((row, num, lab))
+        self.status = tk.StringVar(value="Pronto.")
+        self.progress = ttk.Progressbar(side, mode="indeterminate", length=190)
+        self.progress.pack(side="bottom", padx=18, pady=(4, 16))
+        tk.Label(side, textvariable=self.status, bg=theme.SIDE, fg=theme.MUTED, wraplength=190, justify="left",
+                 font=(theme.FONT[0], 9)).pack(side="bottom", anchor="w", padx=18)
+
+        main = ttk.Frame(self)
+        main.pack(side="left", fill="both", expand=True)
         self.next_step = tk.StringVar(value=NEXT["start"])
-        banner = tk.Label(self, textvariable=self.next_step, wraplength=1080, justify="left", anchor="w",
-                          bg="#e6f4ea", fg="#14532d", padx=10, pady=6, font=("TkDefaultFont", 10, "bold"))
-        banner.pack(fill="x", padx=8, pady=(2, 4))
-        self.nb = ttk.Notebook(self)
+        banner = tk.Label(main, textvariable=self.next_step, wraplength=860, justify="left", anchor="w",
+                          bg="#10382b", fg=theme.ACCENT, padx=14, pady=10, font=(theme.FONT[0], 10, "bold"))
+        banner.pack(fill="x", padx=12, pady=(12, 4))
+        self.nb = ttk.Notebook(main, style="Tabless.TNotebook")
         self.nb.pack(fill="both", expand=True, padx=8, pady=4)
         frames = []
-        for title in ("0 · Preparar", "1 · Ligar", "2 · Backup", "3 · Pacotes", "4 · Ecrã inicial", "5 · Final",
-                      "6 · Anúncios e apps"):
+        for title in self.NAV_TITLES:
             f = ttk.Frame(self.nb, padding=10)
             self.nb.add(f, text=title)
             frames.append(f)
@@ -165,18 +187,33 @@ class App(tk.Tk):
         for i in (TAB_BACKUP, TAB_PACKAGES, TAB_HOME, TAB_FINAL, TAB_EXTRAS):
             self.nb.tab(i, state="disabled")
 
-        logf = ttk.LabelFrame(self, text="O que se está a passar (em linguagem simples)")
-        logf.pack(fill="x", padx=8, pady=4)
-        self.logbox = scrolledtext.ScrolledText(logf, height=9, state="disabled", wrap="word")
+        logf = ttk.LabelFrame(main, text="O que se está a passar (em linguagem simples)")
+        logf.pack(fill="x", padx=12, pady=4)
+        self.logbox = scrolledtext.ScrolledText(logf, height=8, state="disabled", wrap="word")
+        theme.style_text(self.logbox)
         self.logbox.pack(fill="x", padx=4, pady=4)
-        bar = ttk.Frame(self)
-        bar.pack(fill="x", padx=8, pady=(0, 6))
-        self.status = tk.StringVar(value="Pronto.")
-        ttk.Label(bar, textvariable=self.status).pack(side="left")
-        self.progress = ttk.Progressbar(bar, mode="indeterminate", length=160)
-        self.progress.pack(side="right")
+        ttk.Label(main, text=RULES_TEXT, wraplength=860, foreground=theme.VIOLET, justify="left").pack(
+            fill="x", padx=12, pady=(2, 8))
+        self._refresh_nav()
         self.on_platform_change()  # só agora existem todos os widgets de que depende
         self.nb.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+    def _nav_click(self, i: int) -> None:
+        if str(self.nb.tab(i, "state")) == "normal":
+            self.nb.select(i)
+
+    def _refresh_nav(self) -> None:
+        cur = self.nb.index("current")
+        for i, (row, num, lab) in enumerate(self.nav):
+            on = str(self.nb.tab(i, "state")) == "normal"
+            active = i == cur
+            bg = "#1d2a27" if active else theme.SIDE
+            fg = theme.ACCENT if active else (theme.TEXT if on else "#4a5063")
+            for w in (row, num, lab):
+                w.configure(bg=bg)
+            num.configure(fg=fg if active else (theme.MUTED if on else "#3a3f50"))
+            lab.configure(fg=fg)
+        self.after(300, self._refresh_nav)
 
     def _on_tab_changed(self, _e=None) -> None:
         if self.nb.index("current") == TAB_FINAL and self.session:
@@ -197,8 +234,8 @@ class App(tk.Tk):
         self.cb_brand = ttk.Combobox(prof, textvariable=self.v_brand, state="readonly", width=48)
         self.cb_brand.grid(row=0, column=3, padx=6)
         self.profile_msg = tk.StringVar()
-        ttk.Label(prof, textvariable=self.profile_msg, wraplength=1040, justify="left",
-                  foreground="#8a5a00").grid(row=1, column=0, columnspan=4, padx=6, pady=4, sticky="w")
+        ttk.Label(prof, textvariable=self.profile_msg, wraplength=900, justify="left",
+                  foreground=theme.WARN).grid(row=1, column=0, columnspan=4, padx=6, pady=4, sticky="w")
         self.cb_platform.bind("<<ComboboxSelected>>", self.on_platform_change)
         self.cb_brand.bind("<<ComboboxSelected>>", self.on_brand_change)
 
@@ -206,6 +243,7 @@ class App(tk.Tk):
         self.prep_frame.pack(fill="both", expand=True, pady=4)
         self.prep_vars: list[tk.BooleanVar] = []
         self.guide_box = scrolledtext.ScrolledText(f, height=11, wrap="word")
+        theme.style_text(self.guide_box)
         self.btn_prep_go = ttk.Button(f, text="Já fiz tudo → ir para 1 · Ligar", command=self._go_connect)
         self.btn_prep_go.pack(anchor="w", pady=6)
 
@@ -222,7 +260,7 @@ class App(tk.Tk):
             v.trace_add("write", lambda *_a: self._prep_changed())
             self.prep_vars.append(v)
             ttk.Checkbutton(self.prep_frame, text=f"{i}. {title}", variable=v).pack(anchor="w", padx=8, pady=(6, 0))
-            ttk.Label(self.prep_frame, text=detail, wraplength=1020, justify="left", foreground="gray").pack(
+            ttk.Label(self.prep_frame, text=detail, wraplength=900, justify="left", foreground=theme.MUTED).pack(
                 anchor="w", padx=34)
         self.btn_prep_go.configure(state="normal" if steps else "disabled")
         self._prep_changed()
@@ -267,9 +305,9 @@ class App(tk.Tk):
         )):
             ttk.Label(form, text=lab).grid(row=r, column=0, sticky="w", padx=6, pady=3)
             ttk.Entry(form, textvariable=var, width=34).grid(row=r, column=1, padx=6, pady=3)
-            ttk.Label(form, text=hint, foreground="gray").grid(row=r, column=2, sticky="w")
+            ttk.Label(form, text=hint, foreground=theme.MUTED).grid(row=r, column=2, sticky="w")
         ttk.Label(
-            f, wraplength=1050, justify="left",
+            f, wraplength=900, justify="left",
             text=("Antes de ligar: nas Opções de programador da TV tens de ter a 'Depuração USB / sem fios' ligada, "
                   "e o computador e a TV têm de estar na mesma rede. Algumas TVs cortam a energia às portas USB "
                   "enquanto a depuração está ligada — por isso pergunto o que lá tens (preenche acima)."),
@@ -288,7 +326,7 @@ class App(tk.Tk):
         self.conn_msg = tk.StringVar(value="Ainda não estás ligado.")
         self.btn_connect = ttk.Button(f, text="Ligar à TV", command=self.do_connect)
         self.btn_connect.pack(anchor="w", pady=6)
-        ttk.Label(f, textvariable=self.conn_msg, foreground="#1a5fb4", wraplength=1050).pack(anchor="w")
+        ttk.Label(f, textvariable=self.conn_msg, foreground=theme.INFO, wraplength=900).pack(anchor="w")
 
     def _platform(self):
         for p in PLATFORMS.values():
@@ -396,7 +434,7 @@ class App(tk.Tk):
     # ---------------------------------------------------------------- 2 Backup
     def _build_backup(self, f) -> None:
         ttk.Label(
-            f, wraplength=1050, justify="left",
+            f, wraplength=900, justify="left",
             text=("Antes de mexer em seja o que for: guardo a lista de pacotes, os desativados, getprop, as definições "
                   "(global/secure/system) e a memória, e crio já o script de restauro. No fim repito a medição "
                   "e mostro-te a tabela antes/depois."),
@@ -410,7 +448,7 @@ class App(tk.Tk):
             filedialog.askdirectory(parent=self, initialdir=self.v_base.get()) or self.v_base.get())).pack(side="left")
         ttk.Button(f, text="Fazer backup e medir a memória", command=self.do_backup).pack(anchor="w", pady=4)
         self.backup_msg = tk.StringVar()
-        ttk.Label(f, textvariable=self.backup_msg, wraplength=1050, justify="left", foreground="#1a5fb4").pack(anchor="w", pady=6)
+        ttk.Label(f, textvariable=self.backup_msg, wraplength=900, justify="left", foreground=theme.INFO).pack(anchor="w", pady=6)
 
     def do_backup(self) -> None:
         if not self.adb:
@@ -500,7 +538,7 @@ class App(tk.Tk):
         ttk.Label(right, textvariable=self.detail, wraplength=330, justify="left").pack(anchor="w", padx=6, pady=6)
         ttk.Button(right, text="Ver o que faz (dumpsys package)", command=self.show_dumpsys).pack(anchor="w", padx=6)
         ttk.Label(
-            right, wraplength=330, foreground="gray", justify="left",
+            right, wraplength=330, foreground=theme.MUTED, justify="left",
             text=("🔒 = intocável (a TV precisa). Clica na coluna 'Desativar' para marcar ☐/☑. "
                   "Grupo 5 depende de ti: usa a checklist. Pacotes não identificados (grupo ?) "
                   "são inspecionados antes de se desativar."),
@@ -760,7 +798,7 @@ class App(tk.Tk):
 
     # ---------------------------------------------------------------- 4 Ecrã inicial
     def _build_home(self, f) -> None:
-        ttk.Label(f, wraplength=1050, justify="left", text=(
+        ttk.Label(f, wraplength=900, justify="left", text=(
             "O ecrã inicial da Google TV está cheio de anúncios e recomendações. Troco-o pelo FLauncher "
             "(grátis, código aberto, só uma grelha de apps). Só desativo o launcher original quando o "
             "FLauncher já for o predefinido.")).pack(anchor="w")
@@ -780,9 +818,10 @@ class App(tk.Tk):
         ttk.Label(steps, text="5. Desativar o launcher original:").grid(row=5, column=0, sticky="w")
         ttk.Button(steps, text="Desativar launcher original", command=self.home_stock).grid(row=5, column=1, padx=8, pady=3)
         self.home_list_box = tk.Listbox(f, height=6)
+        theme.style_text(self.home_list_box)
         self.home_list_box.pack(fill="x", pady=6)
-        ttk.Label(f, textvariable=self.home_msg, wraplength=1050, foreground="#1a5fb4").pack(anchor="w")
-        ttk.Label(f, foreground="gray", wraplength=1050, text=(
+        ttk.Label(f, textvariable=self.home_msg, wraplength=900, foreground=theme.INFO).pack(anchor="w")
+        ttk.Label(f, foreground=theme.MUTED, wraplength=900, text=(
             "Nota Android 14: se instalares um APK por adb e ficar pendurado, é porque espera uma confirmação "
             "na TV. Instala o FLauncher pela Play Store, que é mais simples.")).pack(anchor="w", pady=6)
         self._home_components: list[str] = []
@@ -899,8 +938,9 @@ class App(tk.Tk):
             ttk.Button(bar, text=text, command=cmd).pack(side="left", padx=4)
         ttk.Button(bar, text="Restaurar tudo", command=self.do_restore).pack(side="right", padx=4)
         self.report = scrolledtext.ScrolledText(f, height=22, wrap="word")
+        theme.style_text(self.report)
         self.report.pack(fill="both", expand=True, pady=8)
-        ttk.Label(f, foreground="gray", wraplength=1050, text=(
+        ttk.Label(f, foreground=theme.MUTED, wraplength=900, text=(
             "Dica: depois de tudo, se algo ligado às portas USB da TV deixou de funcionar, "
             "desliga a depuração USB nas Opções de programador.")).pack(anchor="w")
 
@@ -938,7 +978,7 @@ class App(tk.Tk):
 
     # ---------------------------------------------------------------- 6 Anúncios e apps
     def _build_extras(self, f) -> None:
-        ttk.Label(f, wraplength=1050, justify="left", text=(
+        ttk.Label(f, wraplength=900, justify="left", text=(
             "O que realmente funciona contra anúncios:\n"
             "• YouTube: o DNS não resolve (os anúncios vêm dos mesmos servidores do vídeo) e o AdGuard para "
             "Android TV também não os bloqueia. O caminho é um cliente alternativo, o SmartTube (abaixo).\n"
@@ -956,16 +996,16 @@ class App(tk.Tk):
                      width=36).grid(row=0, column=0, padx=6, pady=6)
         ttk.Label(dns, text="Servidor próprio:").grid(row=0, column=1, padx=(10, 2))
         ttk.Entry(dns, textvariable=self.v_dns_custom, width=34).grid(row=0, column=2)
-        ttk.Label(dns, text="ex.: abc123.dns.nextdns.io", foreground="gray").grid(row=0, column=3, padx=6)
+        ttk.Label(dns, text="ex.: abc123.dns.nextdns.io", foreground=theme.MUTED).grid(row=0, column=3, padx=6)
         b1 = ttk.Button(dns, text="Aplicar DNS", command=self.do_dns_apply)
         b2 = ttk.Button(dns, text="Repor DNS (automático)", command=self.do_dns_reset)
         b1.grid(row=1, column=0, padx=6, pady=4, sticky="w")
         b2.grid(row=1, column=1, columnspan=2, padx=6, pady=4, sticky="w")
         self.dns_buttons = [b1, b2]
         self.dns_note = tk.StringVar()
-        ttk.Label(dns, textvariable=self.dns_note, wraplength=1000, foreground="#8a5a00").grid(
+        ttk.Label(dns, textvariable=self.dns_note, wraplength=900, foreground=theme.WARN).grid(
             row=2, column=0, columnspan=4, padx=6, sticky="w")
-        ttk.Label(dns, wraplength=1000, foreground="gray", justify="left", text=(
+        ttk.Label(dns, wraplength=900, foreground=theme.MUTED, justify="left", text=(
             "Depois de aplicar, confirma que o YouTube e a Netflix ainda carregam. Se a TV ficar sem internet "
             "(há redes que bloqueiam DNS privado), repõe. Nem todas as TVs respeitam esta definição.")).grid(
             row=3, column=0, columnspan=4, padx=6, pady=(0, 6), sticky="w")
@@ -973,22 +1013,23 @@ class App(tk.Tk):
         apps = ttk.LabelFrame(f, text="Apps")
         apps.pack(fill="both", expand=True, pady=4)
         self.app_list = tk.Listbox(apps, height=6, exportselection=False)
+        theme.style_text(self.app_list)
         for a in CATALOG:
             self.app_list.insert("end", f"{a.name} — {a.purpose}")
         self.app_list.pack(fill="x", padx=6, pady=6)
         self.app_list.bind("<<ListboxSelect>>", self.on_app_select)
         self.app_detail = tk.StringVar(value="Seleciona uma app para ver como instalar.")
-        ttk.Label(apps, textvariable=self.app_detail, wraplength=1040, justify="left").pack(anchor="w", padx=6)
+        ttk.Label(apps, textvariable=self.app_detail, wraplength=900, justify="left").pack(anchor="w", padx=6)
         self.app_warn = tk.StringVar()
-        ttk.Label(apps, textvariable=self.app_warn, wraplength=1040, justify="left",
-                  foreground="#a40000").pack(anchor="w", padx=6, pady=4)
+        ttk.Label(apps, textvariable=self.app_warn, wraplength=900, justify="left",
+                  foreground=theme.DANGER).pack(anchor="w", padx=6, pady=4)
         row = ttk.Frame(apps)
         row.pack(fill="x", padx=6, pady=6)
         self.btn_app_page = ttk.Button(row, text="Abrir a página oficial", command=self.open_app_page, state="disabled")
         self.btn_app_page.pack(side="left")
         ttk.Button(row, text="Instalar um APK que já descarreguei…", command=self.install_apk_dialog).pack(
             side="left", padx=10)
-        ttk.Label(apps, foreground="gray", wraplength=1040, text=(
+        ttk.Label(apps, foreground=theme.MUTED, wraplength=900, text=(
             "Nunca descarrego nem instalo nada sozinho: tu descarregas o APK de uma fonte oficial e aqui "
             "vês o tamanho e o SHA-256 antes de confirmar. Para remover uma app usa as Definições da TV "
             "(este programa nunca desinstala).")).pack(anchor="w", padx=6, pady=(0, 6))
