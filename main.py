@@ -1,7 +1,7 @@
-"""TV Debloat — interface para limpar uma Android TV por ADB (sem fios), de forma reversível.
+"""TV Debloat — an interface to clean up an Android TV over ADB (wireless), reversibly.
 
-python main.py          → usa a tua TV
-python main.py --demo   → experimenta com uma TV simulada (precisa de: pip install pillow)
+python main.py          → uses your TV
+python main.py --demo   → try it with a simulated TV (needs: pip install pillow)
 """
 import sys
 from pathlib import Path
@@ -14,7 +14,7 @@ def main() -> None:
         from ui.app import App
     except ModuleNotFoundError as e:
         if e.name and e.name.startswith("tkinter"):
-            print("Falta o Tkinter. Linux: sudo apt install python3-tk · macOS: brew install python-tk")
+            print("Tkinter is missing. Linux: sudo apt install python3-tk · macOS: brew install python-tk")
             raise SystemExit(1)
         raise
     app = App()

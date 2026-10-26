@@ -1,4 +1,4 @@
-"""Pasta `tv-debloat`: backups, disabled.txt, restore.sh/.ps1 e DEBLOAT-LOG.md (regras 3 e 8)."""
+"""`tv-debloat` folder: backups, disabled.txt, restore.sh/.ps1 and DEBLOAT-LOG.md (rules 3 and 8)."""
 from __future__ import annotations
 
 import platform
@@ -24,7 +24,7 @@ class Workspace:
         self.restore_path = self.dir / ("restore.ps1" if self.windows else "restore.sh")
         self.disabled_path = self.dir / "disabled.txt"
         self.log_path = self.dir / "DEBLOAT-LOG.md"
-        self.settings_path = self.dir / "settings_originais.txt"
+        self.settings_path = self.dir / "original_settings.txt"
         self.shots_dir = self.dir / "shots"
         self._shot_n = 0
 
@@ -41,20 +41,20 @@ class Workspace:
 
     # ---------- restore script ----------
     def start_restore(self) -> None:
-        """Cria o script de restauro logo no início (antes de qualquer alteração)."""
+        """Create the restore script right at the start (before any change)."""
         if not self.restore_path.exists():
             if self.windows:
                 head = (
-                    "# restore.ps1 - reverte tudo o que o TV Debloat desativou.\n"
-                    "# Uso: powershell -ExecutionPolicy Bypass -File restore.ps1\n"
+                    "# restore.ps1 - reverts everything TV Debloat disabled.\n"
+                    "# Usage: powershell -ExecutionPolicy Bypass -File restore.ps1\n"
                     f'$Target = "{self.target}"\n'
                     "adb connect $Target\n"
                 )
             else:
                 head = (
                     "#!/bin/sh\n"
-                    "# restore.sh - reverte tudo o que o TV Debloat desativou.\n"
-                    "# Uso: sh restore.sh\n"
+                    "# restore.sh - reverts everything TV Debloat disabled.\n"
+                    "# Usage: sh restore.sh\n"
                     f'TARGET="{self.target}"\n'
                     'adb connect "$TARGET"\n'
                     'ADB="adb -s $TARGET"\n'
@@ -63,7 +63,7 @@ class Workspace:
             if not self.windows:
                 self.restore_path.chmod(0o755)
         else:
-            self._append(self.restore_path, f"# --- nova sessão {_ts()} ({self.target}) ---\n")
+            self._append(self.restore_path, f"# --- new session {_ts()} ({self.target}) ---\n")
         self._ensure_log()
 
     def _restore_line(self, shell_cmd: str, comment: str) -> str:
@@ -84,7 +84,7 @@ class Workspace:
 
     # ---------- disabled.txt ----------
     def read_disabled_entries(self) -> list[tuple[str, str, str, str]]:
-        """[(pacote, data, grupo, descrição)]"""
+        """[(package, date, group, description)]"""
         if not self.disabled_path.exists():
             return []
         rows = []
@@ -102,17 +102,17 @@ class Workspace:
         if pkg not in self.read_disabled():
             self._append(self.disabled_path, f"{pkg}\t{_ts()}\t{group}\t{_one_line(desc)}\n")
         self._append(self.restore_path, self._restore_line(f"pm enable {pkg}", f"{_ts()} {desc}"))
-        self.log(f"- `{pkg}` — {desc}. Desfazer: `adb shell pm enable {pkg}`")
+        self.log(f"- `{pkg}` — {desc}. Undo: `adb shell pm enable {pkg}`")
 
-    def remove_disabled(self, pkg: str, why: str = "reativado") -> None:
+    def remove_disabled(self, pkg: str, why: str = "re-enabled") -> None:
         rows = [r for r in self.read_disabled_entries() if r[0] != pkg]
         text = "".join(f"{p}\t{t}\t{g}\t{d}\n" for p, t, g, d in rows)
         self.disabled_path.write_text(text, encoding="utf-8", newline="\n")
         self.log(f"- `{pkg}` {why}.")
 
-    # ---------- definições (animações) ----------
+    # ---------- settings (animations) ----------
     def record_setting(self, key: str, old: str, null_value: str = "1.0") -> None:
-        """Guarda o valor ORIGINAL (só da primeira vez) e acrescenta a linha de restauro."""
+        """Store the ORIGINAL value (first time only) and add the restore line."""
         old = old.strip()
         if old in ("", "null"):
             old = null_value
@@ -120,8 +120,8 @@ class Workspace:
         if key in known:
             return
         self._append(self.settings_path, f"{key}\t{old}\n")
-        self._append(self.restore_path, self._restore_line(f"settings put global {key} {old}", "valor original"))
-        self.log(f"- definição `{key}` (era `{old}`). Desfazer: `adb shell settings put global {key} {old}`")
+        self._append(self.restore_path, self._restore_line(f"settings put global {key} {old}", "original value"))
+        self.log(f"- setting `{key}` (was `{old}`). Undo: `adb shell settings put global {key} {old}`")
 
     def _read_settings(self) -> dict[str, str]:
         if not self.settings_path.exists():
@@ -140,9 +140,9 @@ class Workspace:
     def _ensure_log(self) -> None:
         if not self.log_path.exists():
             self.log_path.write_text(
-                "# Registo do debloat\n\n"
-                "Tudo o que foi feito, porquê, e o comando exato para desfazer cada alteração.\n"
-                f"Script de restauro completo: `{self.restore_path.name}`\n\n",
+                "# Debloat log\n\n"
+                "Everything that was done, why, and the exact command to undo each change.\n"
+                f"Full restore script: `{self.restore_path.name}`\n\n",
                 encoding="utf-8",
                 newline="\n",
             )
@@ -155,18 +155,18 @@ class Workspace:
         self.log(f"\n### {title} ({_ts()})\n")
 
     def log_header(self, info: dict[str, str]) -> None:
-        lines = [f"\n## Sessão {_ts()}\n"]
+        lines = [f"\n## Session {_ts()}\n"]
         for k, v in info.items():
             lines.append(f"- {k}: {v}")
         self.log("\n".join(lines) + "\n")
 
 
-# ---------- medição de memória ----------
+# ---------- memory measurement ----------
 _MEM = re.compile(r"^\s*(Total|Free|Used|Lost) RAM:\s*([\d.,\s]+)K", re.M)
 
 
 def parse_meminfo(text: str) -> dict[str, int]:
-    """{'Total': kB, 'Free': kB, 'Used': kB, 'Lost': kB} a partir do `dumpsys meminfo`."""
+    """{'Total': kB, 'Free': kB, 'Used': kB, 'Lost': kB} from `dumpsys meminfo`."""
     res: dict[str, int] = {}
     for name, num in _MEM.findall(text):
         digits = re.sub(r"\D", "", num)
@@ -177,7 +177,7 @@ def parse_meminfo(text: str) -> dict[str, int]:
 
 def memory_rows(before: dict[str, int], after: dict[str, int]) -> list[tuple[str, str, str, str]]:
     rows = []
-    for key, label in (("Total", "RAM total"), ("Free", "RAM livre"), ("Used", "RAM usada")):
+    for key, label in (("Total", "Total RAM"), ("Free", "Free RAM"), ("Used", "Used RAM")):
         b, a = before.get(key), after.get(key)
         if b is None or a is None:
             rows.append((label, "—" if b is None else f"{b / 1024:.0f} MB", "—" if a is None else f"{a / 1024:.0f} MB", "—"))

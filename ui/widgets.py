@@ -1,4 +1,4 @@
-"""Widgets auxiliares e o diálogo de verificação no ecrã da TV (regra 4)."""
+"""Helper widgets and the TV-screen verification dialog (rule 4)."""
 from __future__ import annotations
 
 import base64
@@ -23,7 +23,7 @@ class ScrollFrame(ttk.Frame):
 
 
 def safe_grab(win) -> None:
-    """grab_set falha em alguns gestores de janelas se a janela ainda não está visível."""
+    """grab_set fails on some window managers if the window is not yet visible."""
     try:
         if win.winfo_exists():
             win.grab_set()
@@ -32,7 +32,7 @@ def safe_grab(win) -> None:
 
 
 def png_to_photo(path, max_width=720):
-    """Carrega um PNG para o Tk (8.6 lê PNG nativamente) e reduz se for grande."""
+    """Load a PNG into Tk (8.6 reads PNG natively) and shrink it if large."""
     with open(path, "rb") as f:
         img = tk.PhotoImage(data=base64.b64encode(f.read()))
     factor = max(1, -(-img.width() // max_width))  # ceil
@@ -40,18 +40,18 @@ def png_to_photo(path, max_width=720):
 
 
 class VerifyDialog(tk.Toplevel):
-    """Mostra o ecrã da TV, deixa carregar nas teclas do comando e pede a decisão."""
+    """Shows the TV screen, lets you press remote keys and asks for the decision."""
 
     KEYS = [
-        ("Home", "KEYCODE_HOME"), ("Voltar", "KEYCODE_BACK"),
+        ("Home", "KEYCODE_HOME"), ("Back", "KEYCODE_BACK"),
         ("◀", "KEYCODE_DPAD_LEFT"), ("▲", "KEYCODE_DPAD_UP"), ("▼", "KEYCODE_DPAD_DOWN"),
         ("▶", "KEYCODE_DPAD_RIGHT"), ("OK", "KEYCODE_DPAD_CENTER"),
-        ("Entradas/Source", "KEYCODE_TV_INPUT"), ("HDMI 1", "KEYCODE_TV_INPUT_HDMI_1"),
+        ("Inputs/Source", "KEYCODE_TV_INPUT"), ("HDMI 1", "KEYCODE_TV_INPUT_HDMI_1"),
     ]
 
     def __init__(self, app, packages, mode="decide", on_ok=None, on_bad=None, on_abort=None,
-                 title="Verificar a TV", ok_text="✔ Está tudo bem — continuar",
-                 bad_text="✘ Algo partiu — reativar estes pacotes"):
+                 title="Check the TV", ok_text="✔ All good — continue",
+                 bad_text="✘ Something broke — re-enable these packages"):
         super().__init__(app)
         self.app, self.packages, self.mode = app, packages, mode
         self.ok_text, self.bad_text = ok_text, bad_text
@@ -65,35 +65,35 @@ class VerifyDialog(tk.Toplevel):
         what = ", ".join(packages) if packages else "—"
         ttk.Label(
             self,
-            text=(f"Alterados agora: {what}\n"
-                  "Confere no ecrã da TV: o ecrã inicial aparece? O menu Entradas abre? Dá para ir ao HDMI? "
-                  "Netflix e YouTube abrem?"),
+            text=(f"Changed now: {what}\n"
+                  "Check the TV screen: does the home screen appear? Does the Inputs menu open? Can you reach "
+                  "HDMI? Do Netflix and YouTube open?"),
             wraplength=720, justify="left",
         ).pack(padx=10, pady=(10, 4), anchor="w")
 
-        self.result = tk.StringVar(value="A verificar o ecrã inicial e a tirar uma captura…")
+        self.result = tk.StringVar(value="Checking the home screen and taking a capture…")
         ttk.Label(self, textvariable=self.result, wraplength=720, foreground=theme.INFO).pack(padx=10, anchor="w")
-        self.img_label = ttk.Label(self, text="(sem imagem ainda)")
+        self.img_label = ttk.Label(self, text="(no image yet)")
         self.img_label.pack(padx=10, pady=6)
 
-        keys = ttk.LabelFrame(self, text="Comando virtual (carrega e vê o ecrã)")
+        keys = ttk.LabelFrame(self, text="Virtual remote (press and watch the screen)")
         keys.pack(fill="x", padx=10, pady=4)
         for label, code in self.KEYS:
             ttk.Button(keys, text=label, width=14 if len(label) > 5 else 6,
                        command=lambda c=code: self.do_key(c)).pack(side="left", padx=2, pady=4)
         apps = app.session.streaming_candidates() if app.session else []
         if apps:
-            af = ttk.LabelFrame(self, text="Abrir apps")
+            af = ttk.LabelFrame(self, text="Open apps")
             af.pack(fill="x", padx=10, pady=4)
             for label, pkg in apps:
-                ttk.Button(af, text=f"Abrir {label}", command=lambda p=pkg: self.do_launch(p)).pack(side="left", padx=4, pady=4)
-            ttk.Button(af, text="Capturar ecrã", command=self.do_shot).pack(side="left", padx=4)
+                ttk.Button(af, text=f"Open {label}", command=lambda p=pkg: self.do_launch(p)).pack(side="left", padx=4, pady=4)
+            ttk.Button(af, text="Capture screen", command=self.do_shot).pack(side="left", padx=4)
         else:
-            ttk.Button(keys, text="Capturar ecrã", command=self.do_shot).pack(side="left", padx=8)
+            ttk.Button(keys, text="Capture screen", command=self.do_shot).pack(side="left", padx=8)
 
-        man = ttk.LabelFrame(self, text="O que um ecrã não mostra — confirma tu (só se for relevante)")
+        man = ttk.LabelFrame(self, text="What a screenshot cannot show — check yourself (only if relevant)")
         man.pack(fill="x", padx=10, pady=4)
-        for t in ("O som continua a funcionar", "Os botões do comando respondem", "O teclado no ecrã aparece"):
+        for t in ("Sound still works", "Remote buttons respond", "On-screen keyboard appears"):
             ttk.Checkbutton(man, text=t).pack(side="left", padx=8, pady=4)
 
         bar = ttk.Frame(self)
@@ -102,12 +102,12 @@ class VerifyDialog(tk.Toplevel):
             ttk.Button(bar, text=self.ok_text, command=self._ok).pack(side="left")
             ttk.Button(bar, text=self.bad_text, command=self._bad).pack(side="left", padx=10)
         else:
-            ttk.Button(bar, text="Fechar", command=self._close).pack(side="left")
+            ttk.Button(bar, text="Close", command=self._close).pack(side="left")
 
         self.after(150, self.auto_check)
         self.after(100, lambda: safe_grab(self))
 
-    # --- decisões
+    # --- decisions
     def _ok(self):
         self._decided = True
         self.destroy()
@@ -128,7 +128,7 @@ class VerifyDialog(tk.Toplevel):
         if self.mode == "decide" and self.on_abort:
             self.on_abort()
 
-    # --- ações na TV
+    # --- actions on the TV
     def auto_check(self):
         def work():
             s = self.app.session
@@ -142,7 +142,7 @@ class VerifyDialog(tk.Toplevel):
             s = self.app.session
             s.press(code)
             s.sleep(1.5)
-            return (None, f"Tecla {code} enviada.", s.screenshot("tecla"))
+            return (None, f"Key {code} sent.", s.screenshot("tecla"))
 
         self.app.bg(work, ok=self._show)
 
@@ -155,7 +155,7 @@ class VerifyDialog(tk.Toplevel):
         self.app.bg(work, ok=self._show)
 
     def do_shot(self):
-        self.app.bg(lambda: (None, "Captura atualizada.", self.app.session.screenshot("manual")), ok=self._show)
+        self.app.bg(lambda: (None, "Capture updated.", self.app.session.screenshot("manual")), ok=self._show)
 
     def _show(self, res):
         if not self.winfo_exists():
@@ -167,4 +167,4 @@ class VerifyDialog(tk.Toplevel):
             self._img = png_to_photo(path)
             self.img_label.configure(image=self._img, text="")
         except tk.TclError as e:
-            self.img_label.configure(text=f"Não consegui mostrar a imagem ({e}). Ficheiro: {path}")
+            self.img_label.configure(text=f"Could not show the image ({e}). File: {path}")

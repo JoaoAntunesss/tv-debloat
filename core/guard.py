@@ -1,11 +1,11 @@
-"""Guarda de comandos: só passa o que está numa lista branca.
+"""Command guard: only what is on an allowlist gets through.
 
-Implementa as regras 1, 2 e 5 do guia original:
-- nada de `pm uninstall` (só `pm disable-user --user 0`, reversível com `pm enable`);
-- nada de root, bootloader, flash, rm, setprop...;
-- um comando por chamada (sem `;`, `&&`, `|`, redirecionamentos...).
+Implements rules 1, 2 and 5 of the original guide:
+- no `pm uninstall` (only `pm disable-user --user 0`, reversible with `pm enable`);
+- no root, bootloader, flash, rm, setprop...;
+- one command per call (no `;`, `&&`, `|`, redirections...).
 
-Tudo o que não corresponde exatamente a um padrão abaixo é recusado.
+Anything that does not exactly match a pattern below is refused.
 """
 from __future__ import annotations
 
@@ -42,10 +42,10 @@ _ALLOWED = [
         r"^cmd package resolve-activity --brief -a android\.intent\.action\.MAIN -c android\.intent\.category\.HOME$",
         rf"^cmd package set-home-activity {_PKG}/[A-Za-z0-9_.$]+$",
         r"^reboot$",
-        # instalar apps (nunca desinstalar): só ficheiros que este programa enviou para a pasta temporária
+        # install apps (never uninstall): only files this program pushed to the temp folder
         rf"^pm install -r {_TMP_APK}$",
         rf"^rm {_TMP_APK}$",
-        # DNS privado (reversível): só os três modos e um hostname simples
+        # private DNS (reversible): only the three modes and a simple hostname
         r"^settings get global (?:private_dns_mode|private_dns_specifier)$",
         r"^settings put global private_dns_mode (?:hostname|opportunistic|off)$",
         r"^settings put global private_dns_specifier [A-Za-z0-9][A-Za-z0-9.-]{1,252}\.[A-Za-z]{2,63}$",
@@ -57,14 +57,14 @@ def check_shell(cmd: str) -> str:
     """Devolve o comando limpo, ou levanta CommandRefused."""
     cmd = cmd.strip()
     if not cmd:
-        raise CommandRefused("Comando vazio.")
+        raise CommandRefused("Empty command.")
     if _CHAIN.search(cmd):
         raise CommandRefused(
             "Recusado: um comando por chamada (sem ';', '&&', '|' nem redirecionamentos)."
         )
     if "uninstall" in cmd:
-        raise CommandRefused("Recusado: este programa nunca desinstala nada (regra 1).")
+        raise CommandRefused("Refused: this program never uninstalls anything (rule 1).")
     for rx in _ALLOWED:
         if rx.match(cmd):
             return cmd
-    raise CommandRefused(f"Recusado: comando fora da lista de comandos seguros: {cmd!r}")
+    raise CommandRefused(f"Refused: command is not on the safe-command list: {cmd!r}")

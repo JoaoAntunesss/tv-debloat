@@ -1,4 +1,4 @@
-"""Janela principal: 1 Ligar · 2 Backup · 3 Pacotes · 4 Ecrã inicial · 5 Final."""
+"""Main window: 0 Prepare · 1 Connect · 2 Backup · 3 Packages · 4 Home screen · 5 Final · 6 Ads & apps."""
 from __future__ import annotations
 
 import platform
@@ -29,16 +29,16 @@ GROUP_ORDER = [1, 2, 3, 4, 5, 0, 6]
 TAB_START, TAB_CONNECT, TAB_BACKUP, TAB_PACKAGES, TAB_HOME, TAB_FINAL, TAB_EXTRAS = range(7)
 
 RULES_TEXT = (
-    "O que este programa NUNCA faz: desinstalar (só 'pm disable-user --user 0', reversível com 'pm enable'), "
-    "root/bootloader/ROM, executar vários comandos encadeados, ou desativar o que a TV precisa "
-    "(entradas HDMI, menu Entradas, comando, teclado, Play Store/Services, ecrã inicial atual)."
+    "What this program NEVER does: uninstall (only 'pm disable-user --user 0', reversible with 'pm enable'), "
+    "root/bootloader/ROM, run chained commands, or disable what the TV needs "
+    "(HDMI inputs, Inputs menu, remote, keyboard, Play Store/Services, the current home screen)."
 )
 
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("TV Debloat — limpeza segura de Android TV por ADB")
+        self.title("TV Debloat — safe Android TV cleanup over ADB")
         self.geometry("1280x900")
         self.minsize(1100, 760)
         theme.apply(self)
@@ -54,13 +54,13 @@ class App(tk.Tk):
         self.batches: list[list[str]] = []
         self.batch_no = 0
         self.model_info = ""
-        self.sleep_fn = time.sleep  # o modo demonstração troca por esperas curtas
+        self.sleep_fn = time.sleep  # demo mode swaps this for short waits
 
         self._build()
         self.after(80, self._poll)
         self._refresh_adb_status()
 
-    # =============================================================== infraestrutura
+    # =============================================================== infrastructure
     def log(self, msg: str) -> None:
         self.q.put(("log", msg))
 
@@ -68,14 +68,14 @@ class App(tk.Tk):
         self.q.put(("call", fn))
 
     def bg(self, fn, ok=None) -> None:
-        """Corre `fn` numa thread (nunca bloquear o Tk) e chama `ok(resultado)` na thread principal."""
+        """Run `fn` in a thread (never block Tk) and call `ok(result)` on the main thread."""
         self._busy += 1
         self._update_busy()
 
         def work():
             try:
                 res = fn()
-            except BaseException as e:  # noqa: BLE001 - mostramos tudo ao utilizador
+            except BaseException as e:  # noqa: BLE001 - show everything to the user
                 self.q.put(("err", e, traceback.format_exc()))
                 return
             self.q.put(("ok", ok, res))
@@ -84,10 +84,10 @@ class App(tk.Tk):
 
     def _update_busy(self) -> None:
         if self._busy > 0:
-            self.status.set("A trabalhar…")
+            self.status.set("Working…")
             self.progress.start(12)
         else:
-            self.status.set("Pronto.")
+            self.status.set("Ready.")
             self.progress.stop()
 
     def _poll(self) -> None:
@@ -125,18 +125,18 @@ class App(tk.Tk):
         self.logbox.configure(state="disabled")
 
     def _on_error(self, e: BaseException, tb: str) -> None:
-        self._append_log(f"ERRO: {e}")
+        self._append_log(f"ERROR: {e}")
         if isinstance(e, CommandRefused):
-            title = "Comando recusado"
+            title = "Command refused"
         elif isinstance(e, (AdbError, SessionError, ApkError)):
-            title = "Não consegui fazer isto"
+            title = "Could not do this"
         else:
-            title = "Erro inesperado"
+            title = "Unexpected error"
             self._append_log(tb)
         messagebox.showerror(title, str(e), parent=self)
 
-    # =============================================================== construção
-    NAV_TITLES = ("Preparar", "Ligar", "Backup", "Pacotes", "Ecrã inicial", "Final", "Anúncios e apps")
+    # =============================================================== construction
+    NAV_TITLES = ("Prepare", "Connect", "Backup", "Packages", "Home screen", "Final", "Ads & apps")
 
     def _build(self) -> None:
         side = tk.Frame(self, bg=theme.SIDE, width=230)
@@ -144,7 +144,7 @@ class App(tk.Tk):
         side.pack_propagate(False)
         tk.Label(side, text="TV DEBLOAT", bg=theme.SIDE, fg=theme.ACCENT,
                  font=(theme.FONT[0], 16, "bold")).pack(anchor="w", padx=18, pady=(20, 0))
-        tk.Label(side, text="limpeza segura · reversível", bg=theme.SIDE, fg=theme.MUTED,
+        tk.Label(side, text="safe · reversible cleanup", bg=theme.SIDE, fg=theme.MUTED,
                  font=(theme.FONT[0], 9)).pack(anchor="w", padx=18, pady=(0, 18))
         self.nav = []
         for i, title in enumerate(self.NAV_TITLES):
@@ -158,7 +158,7 @@ class App(tk.Tk):
             for w in (row, num, lab):
                 w.bind("<Button-1>", lambda _e, i=i: self._nav_click(i))
             self.nav.append((row, num, lab))
-        self.status = tk.StringVar(value="Pronto.")
+        self.status = tk.StringVar(value="Ready.")
         self.progress = ttk.Progressbar(side, mode="indeterminate", length=190)
         self.progress.pack(side="bottom", padx=18, pady=(4, 16))
         tk.Label(side, textvariable=self.status, bg=theme.SIDE, fg=theme.MUTED, wraplength=190, justify="left",
@@ -187,7 +187,7 @@ class App(tk.Tk):
         for i in (TAB_BACKUP, TAB_PACKAGES, TAB_HOME, TAB_FINAL, TAB_EXTRAS):
             self.nb.tab(i, state="disabled")
 
-        logf = ttk.LabelFrame(main, text="O que se está a passar (em linguagem simples)")
+        logf = ttk.LabelFrame(main, text="What is happening (in plain language)")
         logf.pack(fill="x", padx=12, pady=4)
         self.logbox = scrolledtext.ScrolledText(logf, height=8, state="disabled", wrap="word")
         theme.style_text(self.logbox)
@@ -195,7 +195,7 @@ class App(tk.Tk):
         ttk.Label(main, text=RULES_TEXT, wraplength=860, foreground=theme.VIOLET, justify="left").pack(
             fill="x", padx=12, pady=(2, 8))
         self._refresh_nav()
-        self.on_platform_change()  # só agora existem todos os widgets de que depende
+        self.on_platform_change()  # only now do all the widgets it depends on exist
         self.nb.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
     def _nav_click(self, i: int) -> None:
@@ -219,18 +219,18 @@ class App(tk.Tk):
         if self.nb.index("current") == TAB_FINAL and self.session:
             self.set_next(NEXT["final"])
 
-    # ---------------------------------------------------------------- 0 Preparar / 1 Ligar
+    # ---------------------------------------------------------------- 0 Prepare / 1 Connect
     def _build_start(self, f) -> None:
-        prof = ttk.LabelFrame(f, text="Que TV tens? (escolhe o sistema e a marca)")
+        prof = ttk.LabelFrame(f, text="Which TV do you have? (choose the system and brand)")
         prof.pack(fill="x", pady=(0, 8))
         self._prof_frame = prof
         self.v_platform = tk.StringVar(value=PLATFORMS["androidtv"].name)
         self.v_brand = tk.StringVar()
-        ttk.Label(prof, text="Sistema").grid(row=0, column=0, padx=6, pady=4, sticky="w")
+        ttk.Label(prof, text="System").grid(row=0, column=0, padx=6, pady=4, sticky="w")
         self.cb_platform = ttk.Combobox(prof, textvariable=self.v_platform, state="readonly", width=44,
                                         values=[p.name for p in PLATFORMS.values()])
         self.cb_platform.grid(row=0, column=1, padx=6)
-        ttk.Label(prof, text="Marca").grid(row=0, column=2, padx=6, sticky="w")
+        ttk.Label(prof, text="Brand").grid(row=0, column=2, padx=6, sticky="w")
         self.cb_brand = ttk.Combobox(prof, textvariable=self.v_brand, state="readonly", width=48)
         self.cb_brand.grid(row=0, column=3, padx=6)
         self.profile_msg = tk.StringVar()
@@ -239,12 +239,12 @@ class App(tk.Tk):
         self.cb_platform.bind("<<ComboboxSelected>>", self.on_platform_change)
         self.cb_brand.bind("<<ComboboxSelected>>", self.on_brand_change)
 
-        self.prep_frame = ttk.LabelFrame(f, text="Antes de começar — vai marcando o que já fizeste (na própria TV)")
+        self.prep_frame = ttk.LabelFrame(f, text="Before you start — tick what you have already done (on the TV itself)")
         self.prep_frame.pack(fill="both", expand=True, pady=4)
         self.prep_vars: list[tk.BooleanVar] = []
         self.guide_box = scrolledtext.ScrolledText(f, height=11, wrap="word")
         theme.style_text(self.guide_box)
-        self.btn_prep_go = ttk.Button(f, text="Já fiz tudo → ir para 1 · Ligar", command=self._go_connect)
+        self.btn_prep_go = ttk.Button(f, text="All done → go to 1 · Connect", command=self._go_connect)
         self.btn_prep_go.pack(anchor="w", pady=6)
 
     def _render_prep(self) -> None:
@@ -253,7 +253,7 @@ class App(tk.Tk):
         self.prep_vars = []
         steps = PREP_STEPS.get(self._platform().key, [])
         if not steps:
-            ttk.Label(self.prep_frame, text="Para esta TV não há preparação por ADB: vê o guia abaixo.").pack(
+            ttk.Label(self.prep_frame, text="There is no ADB preparation for this TV: see the guide below.").pack(
                 anchor="w", padx=8, pady=8)
         for i, (title, detail) in enumerate(steps, 1):
             v = tk.BooleanVar(value=False)
@@ -274,57 +274,57 @@ class App(tk.Tk):
     def _go_connect(self) -> None:
         if self.prep_vars and not all(v.get() for v in self.prep_vars):
             if not messagebox.askyesno(
-                "Preparação incompleta",
-                "Ainda há passos por marcar. Sem a depuração ligada e sem a mesma rede a ligação vai falhar.\n\n"
-                "Ir para o separador 1 mesmo assim?", parent=self):
+                "Preparation incomplete",
+                "Some steps are not ticked yet. Without debugging on and the same network the connection will fail.\n\n"
+                "Go to tab 1 anyway?", parent=self):
                 return
         self.nb.select(TAB_CONNECT)
 
     def set_next(self, text: str) -> None:
         self.next_step.set(text)
 
-    # ---------------------------------------------------------------- 1 Ligar
+    # ---------------------------------------------------------------- 1 Connect
     def _build_connect(self, f) -> None:
         self.adb_status = tk.StringVar()
         row = ttk.Frame(f)
         row.pack(fill="x")
         ttk.Label(row, textvariable=self.adb_status).pack(side="left")
-        ttk.Button(row, text="Instalar adb (Google platform-tools)", command=self.install_adb).pack(side="left", padx=10)
+        ttk.Button(row, text="Install adb (Google platform-tools)", command=self.install_adb).pack(side="left", padx=10)
 
-        form = ttk.LabelFrame(f, text="A tua TV")
+        form = ttk.LabelFrame(f, text="Your TV")
         form.pack(fill="x", pady=8)
         self.v_model = tk.StringVar()
         self.v_ip = tk.StringVar()
         self.v_port = tk.StringVar(value="5555")
         self.v_usb = tk.StringVar()
         for r, (lab, var, hint) in enumerate((
-            ("Marca / modelo", self.v_model, "ex.: TCL Smart TV Pro"),
-            ("Endereço IP", self.v_ip, "TV > Definições > Rede e Internet > Estado"),
-            ("Porta", self.v_port, "5555 (a predefinida)"),
-            ("O que está ligado às portas USB da TV?", self.v_usb, "ex.: nada / coluna USB / disco"),
+            ("Brand / model", self.v_model, "e.g. TCL Smart TV Pro"),
+            ("IP address", self.v_ip, "TV > Settings > Network & Internet > Status"),
+            ("Port", self.v_port, "5555 (the default)"),
+            ("What is plugged into the TV's USB ports?", self.v_usb, "e.g. nothing / USB speaker / disk"),
         )):
             ttk.Label(form, text=lab).grid(row=r, column=0, sticky="w", padx=6, pady=3)
             ttk.Entry(form, textvariable=var, width=34).grid(row=r, column=1, padx=6, pady=3)
             ttk.Label(form, text=hint, foreground=theme.MUTED).grid(row=r, column=2, sticky="w")
         ttk.Label(
             f, wraplength=900, justify="left",
-            text=("Antes de ligar: nas Opções de programador da TV tens de ter a 'Depuração USB / sem fios' ligada, "
-                  "e o computador e a TV têm de estar na mesma rede. Algumas TVs cortam a energia às portas USB "
-                  "enquanto a depuração está ligada — por isso pergunto o que lá tens (preenche acima)."),
+            text=("Before connecting: in the TV's Developer options 'USB / wireless debugging' must be on, "
+                  "and the computer and TV must be on the same network. Some TVs cut power to the USB ports "
+                  "while debugging is on — that is why I ask what is plugged in (fill in above)."),
         ).pack(anchor="w")
 
-        pair = ttk.LabelFrame(f, text="Só se a TV pedir código de pareamento (Android 11+, ecrã 'Depuração sem fios')")
+        pair = ttk.LabelFrame(f, text="Only if the TV asks for a pairing code (Android 11+, 'Wireless debugging' screen)")
         pair.pack(fill="x", pady=8)
         self.v_pair_addr = tk.StringVar()
         self.v_pair_code = tk.StringVar()
-        ttk.Label(pair, text="IP:porta de pareamento").grid(row=0, column=0, padx=6, pady=3, sticky="w")
+        ttk.Label(pair, text="Pairing IP:port").grid(row=0, column=0, padx=6, pady=3, sticky="w")
         ttk.Entry(pair, textvariable=self.v_pair_addr, width=24).grid(row=0, column=1)
-        ttk.Label(pair, text="Código").grid(row=0, column=2, padx=6)
+        ttk.Label(pair, text="Code").grid(row=0, column=2, padx=6)
         ttk.Entry(pair, textvariable=self.v_pair_code, width=10).grid(row=0, column=3)
-        ttk.Button(pair, text="Parear", command=self.do_pair).grid(row=0, column=4, padx=8)
+        ttk.Button(pair, text="Pair", command=self.do_pair).grid(row=0, column=4, padx=8)
 
-        self.conn_msg = tk.StringVar(value="Ainda não estás ligado.")
-        self.btn_connect = ttk.Button(f, text="Ligar à TV", command=self.do_connect)
+        self.conn_msg = tk.StringVar(value="Not connected yet.")
+        self.btn_connect = ttk.Button(f, text="Connect to TV", command=self.do_connect)
         self.btn_connect.pack(anchor="w", pady=6)
         ttk.Label(f, textvariable=self.conn_msg, foreground=theme.INFO, wraplength=900).pack(anchor="w")
 
@@ -349,8 +349,8 @@ class App(tk.Tk):
         if p.adb:
             self.guide_box.pack_forget()
             self.btn_connect.configure(state="normal")
-            if self.conn_msg.get().startswith("Esta TV não permite"):
-                self.conn_msg.set("Ainda não estás ligado.")
+            if self.conn_msg.get().startswith("This TV does not allow"):
+                self.conn_msg.set("Not connected yet.")
         else:
             self.set_next(NEXT["no_adb"])
             self.guide_box.configure(state="normal")
@@ -359,14 +359,14 @@ class App(tk.Tk):
             self.guide_box.configure(state="disabled")
             self.guide_box.pack(fill="x", pady=4, after=self.prep_frame)
             self.btn_connect.configure(state="disabled")
-            self.conn_msg.set("Esta TV não permite ADB: segue o guia acima (ação ao nível da rede e das definições da TV).")
+            self.conn_msg.set("This TV does not allow ADB: follow the guide above (network-level action and TV settings).")
 
     def _refresh_adb_status(self) -> None:
         path = find_adb(APP_DIR)
         if path:
-            self.adb_status.set(f"✔ adb encontrado: {path}")
+            self.adb_status.set(f"✔ adb found: {path}")
         else:
-            self.adb_status.set("✘ adb não encontrado — carrega no botão para o instalar automaticamente.")
+            self.adb_status.set("✘ adb not found — press the button to install it automatically.")
 
     def install_adb(self) -> None:
         self.bg(lambda: install_platform_tools(APP_DIR, self.log), ok=lambda p: self._refresh_adb_status())
@@ -375,14 +375,14 @@ class App(tk.Tk):
         if self.adb is None:
             path = find_adb(APP_DIR)
             if not path:
-                raise AdbError("O adb não está instalado. Usa o botão 'Instalar adb'.")
+                raise AdbError("adb is not installed. Use the 'Install adb' button.")
             self.adb = Adb(CliBackend(path), APP_DIR, self.log)
         return self.adb
 
     def do_pair(self) -> None:
         addr, code = self.v_pair_addr.get().strip(), self.v_pair_code.get().strip()
         if not addr or not code:
-            messagebox.showinfo("Pareamento", "Preenche o IP:porta de pareamento e o código que a TV mostra.")
+            messagebox.showinfo("Pairing", "Fill in the pairing IP:port and the code the TV shows.")
             return
 
         def work():
@@ -390,28 +390,28 @@ class App(tk.Tk):
             self.log(msg)
             return msg
 
-        self.bg(work, ok=lambda m: self.conn_msg.set("Pareado. Agora carrega em 'Ligar à TV'."))
+        self.bg(work, ok=lambda m: self.conn_msg.set("Paired. Now press 'Connect to TV'."))
 
     def do_connect(self) -> None:
         ip, port = self.v_ip.get().strip(), self.v_port.get().strip() or "5555"
         if not IPV4.match(ip) or not port.isdigit():
-            messagebox.showwarning("Dados em falta", "Escreve um endereço IP válido (ex.: 192.168.1.50) e a porta.")
+            messagebox.showwarning("Missing data", "Enter a valid IP address (e.g. 192.168.1.50) and the port.")
             return
         if not self.v_usb.get().strip():
-            messagebox.showwarning("Portas USB", "Diz o que está ligado às portas USB da TV (podes escrever 'nada').")
+            messagebox.showwarning("USB ports", "Say what is plugged into the TV's USB ports (you can write 'nothing').")
             return
-        self.conn_msg.set("A ligar… se aparecer 'Permitir depuração USB?' na TV, escolhe Permitir (e 'Permitir sempre').")
+        self.conn_msg.set("Connecting… if 'Allow USB debugging?' shows on the TV, choose Allow (and 'Always allow').")
 
         def work():
             adb = self._ensure_adb()
             if not port_open(ip, int(port)):
                 raise AdbError(
-                    f"A TV não responde em {ip}:{port}. Confirma o IP e que a depuração sem fios está ligada.")
+                    f"The TV does not answer at {ip}:{port}. Check the IP and that wireless debugging is on.")
             adb.connect(ip, int(port))
             self.ui(lambda: self.conn_msg.set(
-                "Ligado. Aceita o diálogo 'Permitir depuração USB?' no ecrã da TV, se ainda estiver lá."))
-            if not adb.wait_authorized(90, on_wait=lambda: self.log("À espera de aprovares o diálogo na TV…")):
-                raise AdbError("A TV não autorizou este computador a tempo. Tenta outra vez e carrega em Permitir.")
+                "Connected. Accept the 'Allow USB debugging?' dialog on the TV screen, if it is still there."))
+            if not adb.wait_authorized(90, on_wait=lambda: self.log("Waiting for you to approve the dialog on the TV…")):
+                raise AdbError("The TV did not authorize this computer in time. Try again and press Allow.")
             props = {}
             for key in ("ro.product.brand", "ro.product.model", "ro.build.version.release", "ro.build.version.sdk"):
                 props[key] = adb.shell(f"getprop {key}").strip()
@@ -425,8 +425,8 @@ class App(tk.Tk):
         if not self.v_model.get().strip():
             self.v_model.set(self.model_info)
         self.conn_msg.set(
-            f"✔ Ligado a {self.model_info or 'TV'} (Android {props.get('ro.build.version.release', '?')}, "
-            f"via {self.adb.backend_name}). Passa ao separador 2.")
+            f"✔ Connected to {self.model_info or 'TV'} (Android {props.get('ro.build.version.release', '?')}, "
+            f"via {self.adb.backend_name}). Go to tab 2.")
         self.nb.tab(TAB_BACKUP, state="normal")
         self.nb.select(TAB_BACKUP)
         self.set_next(NEXT["connected"])
@@ -435,18 +435,18 @@ class App(tk.Tk):
     def _build_backup(self, f) -> None:
         ttk.Label(
             f, wraplength=900, justify="left",
-            text=("Antes de mexer em seja o que for: guardo a lista de pacotes, os desativados, getprop, as definições "
-                  "(global/secure/system) e a memória, e crio já o script de restauro. No fim repito a medição "
-                  "e mostro-te a tabela antes/depois."),
+            text=("Before touching anything: I save the package list, the disabled ones, getprop, the settings "
+                  "(global/secure/system) and memory, and create the restore script right away. At the end I "
+                  "repeat the measurement and show you the before/after table."),
         ).pack(anchor="w")
         row = ttk.Frame(f)
         row.pack(fill="x", pady=10)
         self.v_base = tk.StringVar(value=str(Path.home()))
-        ttk.Label(row, text="Guardar a pasta 'tv-debloat' em:").pack(side="left")
+        ttk.Label(row, text="Save the 'tv-debloat' folder in:").pack(side="left")
         ttk.Entry(row, textvariable=self.v_base, width=50).pack(side="left", padx=6)
-        ttk.Button(row, text="Escolher…", command=lambda: self.v_base.set(
+        ttk.Button(row, text="Choose…", command=lambda: self.v_base.set(
             filedialog.askdirectory(parent=self, initialdir=self.v_base.get()) or self.v_base.get())).pack(side="left")
-        ttk.Button(f, text="Fazer backup e medir a memória", command=self.do_backup).pack(anchor="w", pady=4)
+        ttk.Button(f, text="Back up and measure memory", command=self.do_backup).pack(anchor="w", pady=4)
         self.backup_msg = tk.StringVar()
         ttk.Label(f, textvariable=self.backup_msg, wraplength=900, justify="left", foreground=theme.INFO).pack(anchor="w", pady=6)
 
@@ -461,14 +461,14 @@ class App(tk.Tk):
         self.session = DebloatSession(self.adb, self.ws, log=self.log, sleep=self.sleep_fn,
                                       brand=brand, platform=platform_)
 
-        # Ler as variáveis do Tk aqui (thread principal): o Tk não é seguro a partir de threads de fundo.
+        # Read the Tk variables here (main thread): Tk is not safe from background threads.
         header = {
-            "Sistema": platform_.name,
-            "Marca": brand.name if brand else "?",
+            "System": platform_.name,
+            "Brand": brand.name if brand else "?",
             "TV": self.v_model.get().strip() or self.model_info or "?",
             "IP": target,
-            "Portas USB": self.v_usb.get().strip(),
-            "Computador": platform.platform(),
+            "USB ports": self.v_usb.get().strip(),
+            "Computer": platform.platform(),
         }
 
         def work():
@@ -481,36 +481,36 @@ class App(tk.Tk):
 
     def _backup_done(self, bdir: Path) -> None:
         m = self.session.mem_before
-        mem = (f"RAM total {m.get('Total', 0) / 1024:.0f} MB, livre {m.get('Free', 0) / 1024:.0f} MB, "
-               f"usada {m.get('Used', 0) / 1024:.0f} MB." if m else "Não consegui ler a memória.")
+        mem = (f"Total RAM {m.get('Total', 0) / 1024:.0f} MB, free {m.get('Free', 0) / 1024:.0f} MB, "
+               f"used {m.get('Used', 0) / 1024:.0f} MB." if m else "Could not read memory.")
         self.backup_msg.set(
-            f"✔ Backup em {bdir}\nScript de restauro: {self.ws.restore_path}\nMemória antes: {mem}")
+            f"✔ Backup in {bdir}\nRestore script: {self.ws.restore_path}\nMemory before: {mem}")
         p = self._platform()
         for i in (TAB_PACKAGES, TAB_FINAL, TAB_EXTRAS) + ((TAB_HOME,) if p.launcher_swap else ()):
             self.nb.tab(i, state="normal")
         if not p.launcher_swap:
-            self.log(f"{p.name}: o ecrã inicial não se troca, por isso o separador 4 fica desativado.")
+            self.log(f"{p.name}: the home screen cannot be swapped, so tab 4 is disabled.")
         dns_state = "normal" if p.dns_on_device else "disabled"
         for b in self.dns_buttons:
             b.configure(state=dns_state)
         self.dns_note.set("" if p.dns_on_device else
-                          f"Em {p.name} o DNS não se muda por ADB: usa um DNS que filtra no router (NextDNS, AdGuard Home, Pi-hole).")
+                          f"On {p.name} DNS cannot be changed over ADB: use a filtering DNS on the router (NextDNS, AdGuard Home, Pi-hole).")
         self.cb_platform.configure(state="disabled")
         self.cb_brand.configure(state="disabled")
         self.refresh_tree()
         self.nb.select(TAB_PACKAGES)
         self.set_next(NEXT["backup_done"])
 
-    # ---------------------------------------------------------------- 3 Pacotes
+    # ---------------------------------------------------------------- 3 Packages
     def _build_packages(self, f) -> None:
         tb = ttk.Frame(f)
         tb.pack(fill="x")
         for text, cmd in (
-            ("Procurar pacotes de novo", self.rescan),
-            ("Importar debloat.txt…", self.import_list),
-            ("Marcar grupos 1 e 2", self.mark_12),
-            ("Checklist do grupo 5…", self.open_checklist5),
-            ("Limpar seleção", self.clear_sel),
+            ("Rescan packages", self.rescan),
+            ("Import debloat.txt…", self.import_list),
+            ("Mark groups 1 and 2", self.mark_12),
+            ("Group 5 checklist…", self.open_checklist5),
+            ("Clear selection", self.clear_sel),
         ):
             ttk.Button(tb, text=text, command=cmd).pack(side="left", padx=3)
 
@@ -519,12 +519,12 @@ class App(tk.Tk):
         left = ttk.Frame(mid)
         mid.add(left, weight=3)
         self.tree = ttk.Treeview(left, columns=("sel", "why"), show="tree headings", selectmode="browse")
-        self.tree.heading("#0", text="Pacote")
-        self.tree.heading("sel", text="Desativar")
-        self.tree.heading("why", text="Porquê")
-        self.tree.column("#0", width=380)
+        self.tree.heading("#0", text="Package")
+        self.tree.heading("sel", text="Disable")
+        self.tree.heading("why", text="Why")
+        self.tree.column("#0", width=330)
         self.tree.column("sel", width=90, anchor="center")
-        self.tree.column("why", width=300)
+        self.tree.column("why", width=240)
         sb = ttk.Scrollbar(left, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
         self.tree.pack(side="left", fill="both", expand=True)
@@ -532,28 +532,28 @@ class App(tk.Tk):
         self.tree.bind("<Button-1>", self.on_tree_click)
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
 
-        right = ttk.LabelFrame(mid, text="Detalhes")
+        right = ttk.LabelFrame(mid, text="Details")
         mid.add(right, weight=2)
-        self.detail = tk.StringVar(value="Seleciona um pacote.")
-        ttk.Label(right, textvariable=self.detail, wraplength=330, justify="left").pack(anchor="w", padx=6, pady=6)
-        ttk.Button(right, text="Ver o que faz (dumpsys package)", command=self.show_dumpsys).pack(anchor="w", padx=6)
+        self.detail = tk.StringVar(value="Select a package.")
+        ttk.Label(right, textvariable=self.detail, wraplength=240, justify="left").pack(anchor="w", padx=6, pady=6)
+        ttk.Button(right, text="See what it does (dumpsys package)", command=self.show_dumpsys).pack(anchor="w", padx=6)
         ttk.Label(
-            right, wraplength=330, foreground=theme.MUTED, justify="left",
-            text=("🔒 = intocável (a TV precisa). Clica na coluna 'Desativar' para marcar ☐/☑. "
-                  "Grupo 5 depende de ti: usa a checklist. Pacotes não identificados (grupo ?) "
-                  "são inspecionados antes de se desativar."),
+            right, wraplength=240, foreground=theme.MUTED, justify="left",
+            text=("🔒 = untouchable (the TV needs it). Click the 'Disable' column to tick ☐/☑. "
+                  "Group 5 is up to you: use the checklist. Unidentified packages (group ?) "
+                  "are inspected before being disabled."),
         ).pack(anchor="w", padx=6, pady=10)
 
         bot = ttk.Frame(f)
         bot.pack(fill="x")
-        ttk.Label(bot, text=f"Pacotes por lote (máx. {MAX_BATCH}):").pack(side="left")
+        ttk.Label(bot, text=f"Packages per batch (max. {MAX_BATCH}):").pack(side="left")
         self.batch_size = tk.IntVar(value=MAX_BATCH)
         ttk.Spinbox(bot, from_=1, to=MAX_BATCH, width=4, textvariable=self.batch_size).pack(side="left", padx=4)
         self.one_by_one = tk.BooleanVar(value=False)
-        ttk.Checkbutton(bot, text="Um a um (mais lento, mais seguro)", variable=self.one_by_one).pack(side="left", padx=10)
-        self.sel_count = tk.StringVar(value="0 selecionados")
+        ttk.Checkbutton(bot, text="One by one (slower, safer)", variable=self.one_by_one).pack(side="left", padx=10)
+        self.sel_count = tk.StringVar(value="0 selected")
         ttk.Label(bot, textvariable=self.sel_count).pack(side="left", padx=10)
-        ttk.Button(bot, text="Desativar selecionados (em lotes, com verificação)", command=self.start_disable).pack(side="right")
+        ttk.Button(bot, text="Disable selected (in batches, with verification)", command=self.start_disable).pack(side="right")
 
     def _mark(self, info) -> str:
         if info.verdict.group == 6:
@@ -561,7 +561,7 @@ class App(tk.Tk):
         if info.disabled:
             return "✓ off"
         if info.name in self.bad:
-            return "⚠ partiu"
+            return "⚠ broke"
         return "☑" if info.name in self.sel else "☐"
 
     def refresh_tree(self) -> None:
@@ -576,12 +576,12 @@ class App(tk.Tk):
                 groups.setdefault(info.verdict.group, []).append(info)
         for g in GROUP_ORDER:
             items = groups.get(g, [])
-            label = f"Grupo {g if g else '?'} — {GROUP_LABELS[g]} ({len(items)})"
+            label = f"Group {g if g else '?'} — {GROUP_LABELS[g]} ({len(items)})"
             parent = self.tree.insert("", "end", iid=f"grp{g}", text=label, open=f"grp{g}" in opened)
             for info in items:
                 self.tree.insert(parent, "end", iid=info.name, text=info.name,
                                  values=(self._mark(info), info.verdict.reason))
-        self.sel_count.set(f"{len(self.sel)} selecionados")
+        self.sel_count.set(f"{len(self.sel)} selected")
 
     def rescan(self) -> None:
         self.bg(self.session.scan, ok=lambda _r: self.refresh_tree())
@@ -600,7 +600,7 @@ class App(tk.Tk):
         else:
             self.sel.add(iid)
         self.tree.set(iid, "sel", self._mark(info))
-        self.sel_count.set(f"{len(self.sel)} selecionados")
+        self.sel_count.set(f"{len(self.sel)} selected")
 
     def on_tree_select(self, _e=None) -> None:
         sel = self.tree.selection()
@@ -609,9 +609,9 @@ class App(tk.Tk):
             return
         v = info.verdict
         self.detail.set(
-            f"{info.name}\n\nGrupo: {v.group if v.group else '?'} — {GROUP_LABELS[v.group]}\n"
-            f"O que é: {v.description}\nPorquê: {v.reason}\nFicheiro: {info.path or '—'}\n"
-            f"Estado: {'desativado' if info.disabled else 'ativo'}")
+            f"{info.name}\n\nGroup: {v.group if v.group else '?'} — {GROUP_LABELS[v.group]}\n"
+            f"What it is: {v.description}\nWhy: {v.reason}\nFile: {info.path or '—'}\n"
+            f"State: {'disabled' if info.disabled else 'active'}")
 
     def show_dumpsys(self) -> None:
         sel = self.tree.selection()
@@ -621,7 +621,7 @@ class App(tk.Tk):
 
         def show(res):
             risks, summary = res
-            txt = summary + ("\n\n⚠ CUIDADO: " + "; ".join(risks) if risks else "\n\nSem sinais de serviço essencial.")
+            txt = summary + ("\n\n⚠ CAUTION: " + "; ".join(risks) if risks else "\n\nNo signs of an essential service.")
             messagebox.showinfo(f"dumpsys package {pkg}", txt, parent=self)
 
         self.bg(lambda: self.session.inspect(pkg), ok=show)
@@ -637,7 +637,7 @@ class App(tk.Tk):
         self.refresh_tree()
 
     def import_list(self) -> None:
-        path = filedialog.askopenfilename(parent=self, title="Escolhe um debloat.txt (um pacote por linha)")
+        path = filedialog.askopenfilename(parent=self, title="Choose a debloat.txt (one package per line)")
         if not path:
             return
         wanted = []
@@ -653,23 +653,23 @@ class App(tk.Tk):
                 added += 1
             else:
                 skipped += 1
-        self.log(f"Lista importada: {added} pacotes marcados; {skipped} ignorados "
-                 f"(não existem nesta TV, já estão desativados ou são intocáveis).")
+        self.log(f"List imported: {added} packages ticked; {skipped} ignored "
+                 f"(not on this TV, already disabled or untouchable).")
         self.refresh_tree()
 
     def open_checklist5(self) -> None:
         items = [i for i in self.session.infos.values()
                  if i.system and i.verdict.group == 5 and not i.disabled and i.name not in self.bad]
         if not items:
-            messagebox.showinfo("Grupo 5", "Não há pacotes do grupo 5 por decidir.", parent=self)
+            messagebox.showinfo("Group 5", "There are no group 5 packages left to decide.", parent=self)
             return
         dlg = tk.Toplevel(self)
-        dlg.title("Checklist: o que queres MANTER?")
+        dlg.title("Checklist: what do you want to KEEP?")
         dlg.transient(self)
         ttk.Label(dlg, wraplength=560, justify="left", text=(
-            "Estas apps/serviços dependem de ti (streaming, assistente de voz, Chromecast, espelhamento, "
-            "atualizações). Deixa marcado o que usas ou queres manter. "
-            "Só desativo o que desmarcares.")).pack(padx=10, pady=8)
+            "These apps/services are up to you (streaming, voice assistant, Chromecast, mirroring, "
+            "updates). Leave ticked what you use or want to keep. "
+            "I only disable what you untick.")).pack(padx=10, pady=8)
         sf = ScrollFrame(dlg, height=300)
         sf.pack(fill="both", expand=True, padx=10)
         vars_ = {}
@@ -684,16 +684,16 @@ class App(tk.Tk):
             dlg.destroy()
             self.refresh_tree()
 
-        ttk.Button(dlg, text="Aplicar", command=ok).pack(pady=8)
+        ttk.Button(dlg, text="Apply", command=ok).pack(pady=8)
         dlg.after(100, lambda: safe_grab(dlg))
 
-    # ---- desativar em lotes
+    # ---- disable in batches
     def start_disable(self) -> None:
         chosen = [n for n in sorted(self.sel)
                   if n in self.session.infos and self.session.infos[n].verdict.group != 6
                   and not self.session.infos[n].disabled]
         if not chosen:
-            messagebox.showinfo("Nada selecionado", "Marca primeiro alguns pacotes.", parent=self)
+            messagebox.showinfo("Nothing selected", "Tick some packages first.", parent=self)
             return
         unknown = [n for n in chosen if self.session.infos[n].verdict.group == 0
                    and n not in self.confirmed_unknown]
@@ -709,8 +709,8 @@ class App(tk.Tk):
         risky = {n: r for n, (r, _s) in results.items() if r}
         if risky:
             messagebox.showwarning(
-                "Pacotes que a TV pode precisar",
-                "Retirei da seleção (o dumpsys mostra serviços essenciais):\n\n"
+                "Packages the TV may need",
+                "Removed from the selection (dumpsys shows essential services):\n\n"
                 + "\n".join(f"• {n}: {', '.join(r)}" for n, r in risky.items()), parent=self)
             for n in risky:
                 self.sel.discard(n)
@@ -720,9 +720,9 @@ class App(tk.Tk):
         if safe:
             text = "\n\n".join(f"{n}\n{s}" for n, s in safe.items())
             if messagebox.askyesno(
-                "Pacotes não identificados",
-                "Não consigo dizer só pelo nome o que estes pacotes fazem. Isto é o que declaram:\n\n"
-                f"{text[:2500]}\n\nSem sinais de serviço essencial, mas a decisão é tua. Desativar mesmo assim?",
+                "Unidentified packages",
+                "I cannot tell from the name alone what these packages do. This is what they declare:\n\n"
+                f"{text[:2500]}\n\nNo signs of an essential service, but the decision is yours. Disable anyway?",
                 parent=self):
                 self.confirmed_unknown |= set(safe)
             else:
@@ -737,10 +737,10 @@ class App(tk.Tk):
         size = 1 if self.one_by_one.get() else max(1, min(MAX_BATCH, int(self.batch_size.get() or MAX_BATCH)))
         batches = [chosen[i:i + size] for i in range(0, len(chosen), size)]
         if not messagebox.askyesno(
-            "Confirmar",
-            f"Vou desativar {len(chosen)} pacotes em {len(batches)} lote(s) de até {size}.\n\n"
-            "• Nada é desinstalado; cada um desfaz-se com 'pm enable'.\n"
-            "• Depois de cada lote paro e mostro-te o ecrã da TV para confirmares.\n\nContinuar?",
+            "Confirm",
+            f"I will disable {len(chosen)} packages in {len(batches)} batch(es) of up to {size}.\n\n"
+            "• Nothing is uninstalled; each one is undone with 'pm enable'.\n"
+            "• After each batch I stop and show you the TV screen so you can confirm.\n\nContinue?",
             parent=self):
             return
         self.batches = batches
@@ -749,13 +749,13 @@ class App(tk.Tk):
 
     def _run_next(self) -> None:
         if not self.batches:
-            self.log("Fila concluída.")
+            self.log("Queue finished.")
             self.set_next(NEXT["queue_done"])
             self.rescan()
             return
         batch = self.batches.pop(0)
         self.batch_no += 1
-        label = f"Lote {self.batch_no}" + (" (um a um)" if len(batch) == 1 else "")
+        label = f"Batch {self.batch_no}" + (" (one by one)" if len(batch) == 1 else "")
         self.bg(lambda: self.session.disable_batch(batch, label, self.confirmed_unknown),
                 ok=lambda res: self._batch_done(res))
 
@@ -765,7 +765,7 @@ class App(tk.Tk):
         self.refresh_tree()
         if res.failed:
             p, out = res.failed[0]
-            messagebox.showwarning("Um pacote não desativou", f"{p}\n{out}\n\nPara a fila.", parent=self)
+            messagebox.showwarning("A package did not disable", f"{p}\n{out}\n\nStopping the queue.", parent=self)
             self.batches = []
         if not res.ok:
             return
@@ -781,10 +781,10 @@ class App(tk.Tk):
         def after(_):
             if len(pkgs) == 1:
                 self.bad.add(pkgs[0])
-                self.log(f"{pkgs[0]} era o culpado: fica reativado e marcado como 'partiu'.")
-                self.ws.log(f"- ⚠ `{pkgs[0]}` partiu algo; ficou reativado.")
+                self.log(f"{pkgs[0]} was the culprit: it stays re-enabled and marked as 'broke'.")
+                self.ws.log(f"- ⚠ `{pkgs[0]}` broke something; it was left re-enabled.")
             else:
-                self.log("Reativei o lote. Vou testá-los um a um para descobrir qual partiu.")
+                self.log("Batch re-enabled. I will test them one by one to find which broke it.")
                 self.batches = [[p] for p in pkgs] + self.batches
             self.refresh_tree()
             self._run_next()
@@ -793,43 +793,43 @@ class App(tk.Tk):
 
     def _batch_abort(self, pkgs) -> None:
         self.batches = []
-        self.log("Fechaste a verificação sem decidir. A fila parou; os pacotes deste lote ficam desativados — "
-                 "verifica a TV e usa 'Restaurar tudo' no separador 5 se for preciso.")
+        self.log("You closed the verification without deciding. The queue stopped; this batch's packages stay disabled — "
+                 "check the TV and use 'Restore all' in tab 5 if needed.")
 
-    # ---------------------------------------------------------------- 4 Ecrã inicial
+    # ---------------------------------------------------------------- 4 Home screen
     def _build_home(self, f) -> None:
         ttk.Label(f, wraplength=900, justify="left", text=(
-            "O ecrã inicial da Google TV está cheio de anúncios e recomendações. Troco-o pelo FLauncher "
-            "(grátis, código aberto, só uma grelha de apps). Só desativo o launcher original quando o "
-            "FLauncher já for o predefinido.")).pack(anchor="w")
+            "The Google TV home screen is full of ads and recommendations. I swap it for FLauncher "
+            "(free, open source, just a grid of apps). I only disable the original launcher once "
+            "FLauncher is already the default.")).pack(anchor="w")
         self.home_msg = tk.StringVar(value="")
         steps = ttk.Frame(f)
         steps.pack(fill="x", pady=8)
-        ttk.Label(steps, text="1. Instala o FLauncher na TV (Play Store) e depois:").grid(row=0, column=0, sticky="w")
-        ttk.Button(steps, text="Verificar se está instalado", command=self.home_check).grid(row=0, column=1, padx=8, pady=3)
-        ttk.Label(steps, text="2. Ver quem reclama o ecrã inicial:").grid(row=1, column=0, sticky="w")
-        ttk.Button(steps, text="Listar", command=self.home_list).grid(row=1, column=1, padx=8, pady=3)
-        ttk.Label(steps, text="3. Definir o FLauncher como predefinido:").grid(row=2, column=0, sticky="w")
-        ttk.Button(steps, text="Definir (ou escolhe na TV)", command=self.home_set).grid(row=2, column=1, padx=8, pady=3)
-        ttk.Label(steps, text="4. Reiniciar e ver se o FLauncher se mantém:").grid(row=3, column=0, sticky="w")
-        ttk.Button(steps, text="Reiniciar e verificar", command=self.home_reboot).grid(row=3, column=1, padx=8, pady=3)
-        ttk.Label(steps, text="   Se o assistente de configuração roubar o ecrã:").grid(row=4, column=0, sticky="w")
-        ttk.Button(steps, text="Desativar assistente", command=self.home_wizard).grid(row=4, column=1, padx=8, pady=3)
-        ttk.Label(steps, text="5. Desativar o launcher original:").grid(row=5, column=0, sticky="w")
-        ttk.Button(steps, text="Desativar launcher original", command=self.home_stock).grid(row=5, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="1. Install FLauncher on the TV (Play Store), then:").grid(row=0, column=0, sticky="w")
+        ttk.Button(steps, text="Check it is installed", command=self.home_check).grid(row=0, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="2. See who claims the home screen:").grid(row=1, column=0, sticky="w")
+        ttk.Button(steps, text="List", command=self.home_list).grid(row=1, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="3. Set FLauncher as the default:").grid(row=2, column=0, sticky="w")
+        ttk.Button(steps, text="Set (or choose on the TV)", command=self.home_set).grid(row=2, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="4. Reboot and check FLauncher sticks:").grid(row=3, column=0, sticky="w")
+        ttk.Button(steps, text="Reboot and check", command=self.home_reboot).grid(row=3, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="   If the setup wizard steals the screen:").grid(row=4, column=0, sticky="w")
+        ttk.Button(steps, text="Disable wizard", command=self.home_wizard).grid(row=4, column=1, padx=8, pady=3)
+        ttk.Label(steps, text="5. Disable the original launcher:").grid(row=5, column=0, sticky="w")
+        ttk.Button(steps, text="Disable original launcher", command=self.home_stock).grid(row=5, column=1, padx=8, pady=3)
         self.home_list_box = tk.Listbox(f, height=6)
         theme.style_text(self.home_list_box)
         self.home_list_box.pack(fill="x", pady=6)
         ttk.Label(f, textvariable=self.home_msg, wraplength=900, foreground=theme.INFO).pack(anchor="w")
         ttk.Label(f, foreground=theme.MUTED, wraplength=900, text=(
-            "Nota Android 14: se instalares um APK por adb e ficar pendurado, é porque espera uma confirmação "
-            "na TV. Instala o FLauncher pela Play Store, que é mais simples.")).pack(anchor="w", pady=6)
+            "Android 14 note: if you install an APK over adb and it hangs, it is waiting for a confirmation "
+            "on the TV. Install FLauncher from the Play Store, which is simpler.")).pack(anchor="w", pady=6)
         self._home_components: list[str] = []
 
     def home_check(self) -> None:
         def done(p):
-            self.home_msg.set(f"✔ FLauncher instalado ({p})." if p else
-                              "✘ Ainda não encontro o FLauncher. Instala-o na Play Store da TV e tenta de novo.")
+            self.home_msg.set(f"✔ FLauncher installed ({p})." if p else
+                              "✘ I cannot find FLauncher yet. Install it from the TV's Play Store and try again.")
             if p:
                 self.bg(self.session.scan, ok=lambda _r: self.refresh_tree())
 
@@ -844,8 +844,8 @@ class App(tk.Tk):
             self._home_components = [c for _p, c in comps]
             self.home_list_box.delete(0, "end")
             for pkg, comp in comps:
-                self.home_list_box.insert("end", f"{comp}" + ("   ← predefinido agora" if pkg == default else ""))
-            self.home_msg.set("Estes são os ecrãs iniciais instalados. O FLauncher deve aparecer na lista.")
+                self.home_list_box.insert("end", f"{comp}" + ("   ← default now" if pkg == default else ""))
+            self.home_msg.set("These are the installed home screens. FLauncher should appear in the list.")
 
         self.bg(work, ok=done)
 
@@ -862,15 +862,15 @@ class App(tk.Tk):
         comp = self._flauncher_component()
         if not comp or "/" not in comp:
             messagebox.showinfo(
-                "FLauncher", "Primeiro carrega em 'Listar' para o FLauncher aparecer. Se não conseguir ser definido "
-                "por aqui, carrega em Home no comando e escolhe o FLauncher na TV ('Sempre').", parent=self)
+                "FLauncher", "First press 'List' so FLauncher appears. If it cannot be set "
+                "from here, press Home on the remote and choose FLauncher on the TV ('Always').", parent=self)
             return
 
         def done(cur):
             ok = bool(cur and "flauncher" in cur.lower())
-            self.home_msg.set("✔ O FLauncher é agora o predefinido." if ok else
-                              f"O predefinido continua a ser {cur}. Escolhe o FLauncher na TV ao carregar em Home.")
-            VerifyDialog(self, [], mode="view", title="Ecrã inicial atual")
+            self.home_msg.set("✔ FLauncher is now the default." if ok else
+                              f"The default is still {cur}. Choose FLauncher on the TV when you press Home.")
+            VerifyDialog(self, [], mode="view", title="Current home screen")
 
         self.bg(lambda: self.session.set_home(comp), ok=done)
 
@@ -886,11 +886,11 @@ class App(tk.Tk):
             ok = bool(cur and "flauncher" in cur.lower())
             wizard = bool(focus.package and "setupwraith" in focus.package)
             if ok and not wizard:
-                self.home_msg.set(f"✔ Depois do reinício o ecrã inicial continua a ser o FLauncher ({focus.package}).")
+                self.home_msg.set(f"✔ After the reboot the home screen is still FLauncher ({focus.package}).")
             else:
-                self.home_msg.set(f"✘ Depois do reinício o ecrã é '{focus.package}' (predefinido: {cur}). "
-                                  "Se for o assistente de configuração, usa 'Desativar assistente'.")
-            VerifyDialog(self, [], mode="view", title="Depois do reinício")
+                self.home_msg.set(f"✘ After the reboot the screen is '{focus.package}' (default: {cur}). "
+                                  "If it is the setup wizard, use 'Disable wizard'.")
+            VerifyDialog(self, [], mode="view", title="After the reboot")
 
         self.bg(work, ok=done)
 
@@ -899,56 +899,56 @@ class App(tk.Tk):
             self.session.unlock_launcher_disable()
             pkgs = [p for p in pkgs_fn() if p in self.session.infos]
             if not pkgs:
-                raise SessionError("Não encontrei esse pacote nesta TV.")
+                raise SessionError("I could not find that package on this TV.")
             return self.session.disable_batch(pkgs, label)
 
         def done(res):
             self.refresh_tree()
             if res.failed:
-                messagebox.showwarning("Não desativou", f"{res.failed[0][0]}\n{res.failed[0][1]}", parent=self)
+                messagebox.showwarning("Did not disable", f"{res.failed[0][0]}\n{res.failed[0][1]}", parent=self)
             if res.ok:
                 VerifyDialog(self, res.ok, mode="decide",
-                             on_ok=lambda: self.home_msg.set("✔ Confirmado."),
+                             on_ok=lambda: self.home_msg.set("✔ Confirmed."),
                              on_bad=lambda: self.bg(lambda: self.session.revert(res.ok), ok=lambda _r: self.refresh_tree()),
                              on_abort=lambda: None, title=label)
 
         self.bg(work, ok=done)
 
     def home_wizard(self) -> None:
-        self._unlock_and_disable(lambda: [SETUP_WIZARD], "Assistente de configuração")
+        self._unlock_and_disable(lambda: [SETUP_WIZARD], "Setup wizard")
 
     def home_stock(self) -> None:
         if not messagebox.askyesno(
-            "Launcher original",
-            "O FLauncher já é o predefinido e o ecrã continua a funcionar depois do reinício?\n\n"
-            "Só então desativo o launcher original (fica reversível com 'pm enable').", parent=self):
+            "Original launcher",
+            "Is FLauncher already the default and does the screen still work after the reboot?\n\n"
+            "Only then do I disable the original launcher (reversible with 'pm enable').", parent=self):
             return
-        self._unlock_and_disable(self.session.stock_launchers_present, "Launcher original")
+        self._unlock_and_disable(self.session.stock_launchers_present, "Original launcher")
 
     # ---------------------------------------------------------------- 5 Final
     def _build_final(self, f) -> None:
         bar = ttk.Frame(f)
         bar.pack(fill="x")
         for text, cmd in (
-            ("e) Animações a metade", self.do_speedups),
-            ("f) Limpar caches", self.do_trim),
-            ("g) Reiniciar e medir", self.do_final_measure),
-            ("Gerar relatório", self.do_report),
+            ("e) Halve animations", self.do_speedups),
+            ("f) Clear caches", self.do_trim),
+            ("g) Reboot and measure", self.do_final_measure),
+            ("Generate report", self.do_report),
         ):
             ttk.Button(bar, text=text, command=cmd).pack(side="left", padx=4)
-        ttk.Button(bar, text="Restaurar tudo", command=self.do_restore).pack(side="right", padx=4)
+        ttk.Button(bar, text="Restore all", command=self.do_restore).pack(side="right", padx=4)
         self.report = scrolledtext.ScrolledText(f, height=22, wrap="word")
         theme.style_text(self.report)
         self.report.pack(fill="both", expand=True, pady=8)
         ttk.Label(f, foreground=theme.MUTED, wraplength=900, text=(
-            "Dica: depois de tudo, se algo ligado às portas USB da TV deixou de funcionar, "
-            "desliga a depuração USB nas Opções de programador.")).pack(anchor="w")
+            "Tip: after everything, if something plugged into the TV's USB ports stopped working, "
+            "turn off USB debugging in Developer options.")).pack(anchor="w")
 
     def do_speedups(self) -> None:
-        self.bg(self.session.apply_speedups, ok=lambda _r: self.log("Animações a 0.5 (valores originais guardados)."))
+        self.bg(self.session.apply_speedups, ok=lambda _r: self.log("Animations at 0.5 (original values saved)."))
 
     def do_trim(self) -> None:
-        self.bg(self.session.trim_caches, ok=lambda _r: self.log("Caches limpas."))
+        self.bg(self.session.trim_caches, ok=lambda _r: self.log("Caches cleared."))
 
     def do_final_measure(self) -> None:
         def work():
@@ -958,7 +958,7 @@ class App(tk.Tk):
 
         def done(text):
             self._show_report(text)
-            VerifyDialog(self, [], mode="view", title="Depois do reinício final")
+            VerifyDialog(self, [], mode="view", title="After the final reboot")
 
         self.bg(work, ok=done)
 
@@ -974,31 +974,31 @@ class App(tk.Tk):
         self.report.delete("1.0", "end")
         self.report.insert("end", text)
         self.ws.log("\n" + text)
-        self.log(f"Relatório guardado em {self.ws.log_path}")
+        self.log(f"Report saved in {self.ws.log_path}")
 
-    # ---------------------------------------------------------------- 6 Anúncios e apps
+    # ---------------------------------------------------------------- 6 Ads & apps
     def _build_extras(self, f) -> None:
         ttk.Label(f, wraplength=900, justify="left", text=(
-            "O que realmente funciona contra anúncios:\n"
-            "• YouTube: o DNS não resolve (os anúncios vêm dos mesmos servidores do vídeo) e o AdGuard para "
-            "Android TV também não os bloqueia. O caminho é um cliente alternativo, o SmartTube (abaixo).\n"
-            "• Streaming e telemetria: um DNS que filtra corta rastreio e parte dos anúncios, mas não os "
-            "anúncios que vêm dentro do próprio stream.\n"
-            "• Anúncios do ecrã inicial: resolvem-se com o debloat e com o FLauncher (separadores 3 e 4)."
+            "What actually works against ads:\n"
+            "• YouTube: DNS does not solve it (the ads come from the same servers as the video) and AdGuard for "
+            "Android TV does not block them either. The way is an alternative client, SmartTube (below).\n"
+            "• Streaming and telemetry: a filtering DNS cuts tracking and some ads, but not the "
+            "ads that come inside the stream itself.\n"
+            "• Home screen ads: solved with the debloat and FLauncher (tabs 3 and 4)."
         )).pack(anchor="w")
 
-        dns = ttk.LabelFrame(f, text="DNS que filtra anúncios e rastreio (DNS privado do Android 9+)")
+        dns = ttk.LabelFrame(f, text="DNS that filters ads and tracking (Android 9+ private DNS)")
         dns.pack(fill="x", pady=8)
-        self.dns_presets = {"AdGuard DNS (anúncios e rastreio)": "dns.adguard-dns.com", "Outro (escrever)": ""}
-        self.v_dns_preset = tk.StringVar(value="AdGuard DNS (anúncios e rastreio)")
+        self.dns_presets = {"AdGuard DNS (ads and tracking)": "dns.adguard-dns.com", "Other (type it)": ""}
+        self.v_dns_preset = tk.StringVar(value="AdGuard DNS (ads and tracking)")
         self.v_dns_custom = tk.StringVar()
         ttk.Combobox(dns, textvariable=self.v_dns_preset, values=list(self.dns_presets), state="readonly",
                      width=36).grid(row=0, column=0, padx=6, pady=6)
-        ttk.Label(dns, text="Servidor próprio:").grid(row=0, column=1, padx=(10, 2))
+        ttk.Label(dns, text="Custom server:").grid(row=0, column=1, padx=(10, 2))
         ttk.Entry(dns, textvariable=self.v_dns_custom, width=34).grid(row=0, column=2)
-        ttk.Label(dns, text="ex.: abc123.dns.nextdns.io", foreground=theme.MUTED).grid(row=0, column=3, padx=6)
-        b1 = ttk.Button(dns, text="Aplicar DNS", command=self.do_dns_apply)
-        b2 = ttk.Button(dns, text="Repor DNS (automático)", command=self.do_dns_reset)
+        ttk.Label(dns, text="e.g. abc123.dns.nextdns.io", foreground=theme.MUTED).grid(row=0, column=3, padx=6)
+        b1 = ttk.Button(dns, text="Apply DNS", command=self.do_dns_apply)
+        b2 = ttk.Button(dns, text="Reset DNS (automatic)", command=self.do_dns_reset)
         b1.grid(row=1, column=0, padx=6, pady=4, sticky="w")
         b2.grid(row=1, column=1, columnspan=2, padx=6, pady=4, sticky="w")
         self.dns_buttons = [b1, b2]
@@ -1006,8 +1006,8 @@ class App(tk.Tk):
         ttk.Label(dns, textvariable=self.dns_note, wraplength=900, foreground=theme.WARN).grid(
             row=2, column=0, columnspan=4, padx=6, sticky="w")
         ttk.Label(dns, wraplength=900, foreground=theme.MUTED, justify="left", text=(
-            "Depois de aplicar, confirma que o YouTube e a Netflix ainda carregam. Se a TV ficar sem internet "
-            "(há redes que bloqueiam DNS privado), repõe. Nem todas as TVs respeitam esta definição.")).grid(
+            "After applying, check that YouTube and Netflix still load. If the TV loses internet "
+            "(some networks block private DNS), reset it. Not every TV honours this setting.")).grid(
             row=3, column=0, columnspan=4, padx=6, pady=(0, 6), sticky="w")
 
         apps = ttk.LabelFrame(f, text="Apps")
@@ -1018,21 +1018,21 @@ class App(tk.Tk):
             self.app_list.insert("end", f"{a.name} — {a.purpose}")
         self.app_list.pack(fill="x", padx=6, pady=6)
         self.app_list.bind("<<ListboxSelect>>", self.on_app_select)
-        self.app_detail = tk.StringVar(value="Seleciona uma app para ver como instalar.")
+        self.app_detail = tk.StringVar(value="Select an app to see how to install it.")
         ttk.Label(apps, textvariable=self.app_detail, wraplength=900, justify="left").pack(anchor="w", padx=6)
         self.app_warn = tk.StringVar()
         ttk.Label(apps, textvariable=self.app_warn, wraplength=900, justify="left",
                   foreground=theme.DANGER).pack(anchor="w", padx=6, pady=4)
         row = ttk.Frame(apps)
         row.pack(fill="x", padx=6, pady=6)
-        self.btn_app_page = ttk.Button(row, text="Abrir a página oficial", command=self.open_app_page, state="disabled")
+        self.btn_app_page = ttk.Button(row, text="Open the official page", command=self.open_app_page, state="disabled")
         self.btn_app_page.pack(side="left")
-        ttk.Button(row, text="Instalar um APK que já descarreguei…", command=self.install_apk_dialog).pack(
+        ttk.Button(row, text="Install an APK I already downloaded…", command=self.install_apk_dialog).pack(
             side="left", padx=10)
         ttk.Label(apps, foreground=theme.MUTED, wraplength=900, text=(
-            "Nunca descarrego nem instalo nada sozinho: tu descarregas o APK de uma fonte oficial e aqui "
-            "vês o tamanho e o SHA-256 antes de confirmar. Para remover uma app usa as Definições da TV "
-            "(este programa nunca desinstala).")).pack(anchor="w", padx=6, pady=(0, 6))
+            "I never download or install anything by myself: you download the APK from an official source and here "
+            "you see the size and SHA-256 before confirming. To remove an app use the TV's Settings "
+            "(this program never uninstalls).")).pack(anchor="w", padx=6, pady=(0, 6))
 
     def _selected_app(self):
         idx = self.app_list.curselection()
@@ -1052,7 +1052,7 @@ class App(tk.Tk):
             webbrowser.open(a.page_url)
 
     def install_apk_dialog(self) -> None:
-        path = filedialog.askopenfilename(parent=self, title="Escolhe o APK a instalar na TV",
+        path = filedialog.askopenfilename(parent=self, title="Choose the APK to install on the TV",
                                           filetypes=[("APK", "*.apk")])
         if not path:
             return
@@ -1061,13 +1061,13 @@ class App(tk.Tk):
 
         def confirm(info):
             ok = messagebox.askyesno(
-                "Instalar na TV?",
-                f"Ficheiro: {info['name']}\nTamanho: {info['size'] / 1048576:.1f} MB\nSHA-256:\n{info['sha256']}\n\n"
-                "Confirma que o descarregaste do site oficial e, se o projeto publicar o SHA-256, que coincide."
-                f"{warn}\n\nInstalar?", parent=self)
+                "Install on the TV?",
+                f"File: {info['name']}\nSize: {info['size'] / 1048576:.1f} MB\nSHA-256:\n{info['sha256']}\n\n"
+                "Check that you downloaded it from the official site and, if the project publishes the SHA-256, that it matches."
+                f"{warn}\n\nInstall?", parent=self)
             if ok:
                 self.bg(lambda: self.session.install_apk(path),
-                        ok=lambda sha: self.log(f"✔ {info['name']} instalada (SHA-256 {sha[:12]}…). Abre-a na TV."))
+                        ok=lambda sha: self.log(f"✔ {info['name']} installed (SHA-256 {sha[:12]}…). Open it on the TV."))
 
         self.bg(lambda: validate_apk(path), ok=confirm)
 
@@ -1077,31 +1077,31 @@ class App(tk.Tk):
     def do_dns_apply(self) -> None:
         host = self._dns_host()
         if not host:
-            messagebox.showinfo("DNS", "Escolhe um servidor ou escreve o teu (ex.: abc123.dns.nextdns.io).", parent=self)
+            messagebox.showinfo("DNS", "Choose a server or type your own (e.g. abc123.dns.nextdns.io).", parent=self)
             return
         if not messagebox.askyesno(
-            "Aplicar DNS",
-            f"Vou usar o DNS privado '{host}' nesta TV (reversível: 'Repor DNS' ou restaurar tudo). Continuar?",
+            "Apply DNS",
+            f"I will use the private DNS '{host}' on this TV (reversible: 'Reset DNS' or restore all). Continue?",
             parent=self):
             return
 
         def done(_r):
             VerifyDialog(
-                self, [], mode="decide", title="DNS aplicado",
-                ok_text="✔ A TV continua com internet",
-                bad_text="✘ Sem internet / algo partiu — repor DNS",
-                on_ok=lambda: self.log("DNS mantido."),
-                on_bad=lambda: self.bg(self.session.reset_private_dns, ok=lambda _x: self.log("DNS reposto.")),
-                on_abort=lambda: self.log("Verificação do DNS fechada sem decidir; usa 'Repor DNS' se for preciso."))
+                self, [], mode="decide", title="DNS applied",
+                ok_text="✔ The TV still has internet",
+                bad_text="✘ No internet / something broke — reset DNS",
+                on_ok=lambda: self.log("DNS kept."),
+                on_bad=lambda: self.bg(self.session.reset_private_dns, ok=lambda _x: self.log("DNS reset.")),
+                on_abort=lambda: self.log("DNS check closed without deciding; use 'Reset DNS' if needed."))
 
         self.bg(lambda: self.session.set_private_dns(host), ok=done)
 
     def do_dns_reset(self) -> None:
-        self.bg(self.session.reset_private_dns, ok=lambda _r: self.log("DNS privado reposto em automático."))
+        self.bg(self.session.reset_private_dns, ok=lambda _r: self.log("Private DNS reset to automatic."))
 
     def do_restore(self) -> None:
         if not messagebox.askyesno(
-            "Restaurar tudo",
-            "Vou reativar todos os pacotes de disabled.txt e repor as animações originais. Continuar?", parent=self):
+            "Restore all",
+            "I will re-enable every package in disabled.txt and reset the original animations. Continue?", parent=self):
             return
-        self.bg(self.session.restore_all, ok=lambda pk: (self.log(f"{len(pk)} pacotes reativados."), self.refresh_tree()))
+        self.bg(self.session.restore_all, ok=lambda pk: (self.log(f"{len(pk)} packages re-enabled."), self.refresh_tree()))

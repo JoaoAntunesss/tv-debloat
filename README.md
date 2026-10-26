@@ -1,107 +1,95 @@
 # TV Debloat
 
-Interface de desktop (Python + Tkinter) para limpar uma Android TV por ADB sem fios,
-de forma **reversível**: anúncios, recomendações, telemetria e apps que nunca usas.
+A desktop app (Python + Tkinter) that cleans up an Android TV over wireless ADB, **reversibly**:
+ads, recommendations, telemetry and apps you never use. Dark UI with a step sidebar and a
+"next step" banner that always tells you what to do.
 
-## Como correr
+## Screenshots
 
-```bash
-python main.py
-```
-
-- Python 3.9+ com Tkinter. Para o aspeto escuro moderno: `pip install sv-ttk` (opcional; sem ele fica o aspeto padrão). Linux: `sudo apt install python3-tk` · macOS: `brew install python-tk`.
-- O `adb` é procurado no PATH; se não existir, o botão **Instalar adb** descarrega o platform-tools
-  oficial da Google para a pasta do programa.
-- macOS: se o `adb` der "No route to host" (privacidade de Rede Local), o programa passa sozinho para o
-  cliente Python `adb-shell` (`pip install adb-shell`). O pareamento por código só funciona com o `adb`.
-
-Para experimentar sem TV: `pip install pillow` e `python main.py --demo` (TV simulada, não toca em nada real).
-
-## Capturas
-
-> Capturas da interface real contra uma **TV simulada** (modo `--demo`), não de uma TV física.
-> Regenerar: `DISPLAY=:99 python tools/make_screenshots.py docs/screenshots` (precisa de Xvfb, ImageMagick e Pillow).
+> Captures of the real interface against a **simulated TV** (`--demo` mode), not a physical TV.
+> Regenerate: `DISPLAY=:99 python tools/make_screenshots.py docs/screenshots` (needs Xvfb, ImageMagick and Pillow).
 
 | | |
 |---|---|
-| ![Preparar](docs/screenshots/0-preparar.png) **0 · Preparar** | ![Ligar](docs/screenshots/1-ligar.png) **1 · Ligar** |
-| ![Backup](docs/screenshots/2-backup.png) **2 · Backup** | ![Pacotes](docs/screenshots/3-pacotes.png) **3 · Pacotes** |
-| ![Verificação](docs/screenshots/4-verificacao.png) **Verificação após cada lote** | ![Final](docs/screenshots/5-final.png) **5 · Final** |
-| ![Anúncios e apps](docs/screenshots/6-anuncios-apps.png) **6 · Anúncios e apps** | ![Sem ADB](docs/screenshots/0b-samsung-sem-adb.png) **TV sem ADB (Samsung)** |
+| ![Prepare](docs/screenshots/0-prepare.png) **0 · Prepare** | ![Connect](docs/screenshots/1-connect.png) **1 · Connect** |
+| ![Backup](docs/screenshots/2-backup.png) **2 · Backup** | ![Packages](docs/screenshots/3-packages.png) **3 · Packages** |
+| ![Verification](docs/screenshots/4-verification.png) **Verification after every batch** | ![Final](docs/screenshots/5-final.png) **5 · Final** |
+| ![Ads & apps](docs/screenshots/6-ads-apps.png) **6 · Ads & apps** | ![No ADB](docs/screenshots/0b-samsung-no-adb.png) **A TV without ADB (Samsung)** |
 
-## Fluxo (7 separadores; cada um desbloqueia o seguinte, e um aviso verde diz sempre o próximo passo)
+## Running it
 
-0. **Preparar** – escolhes sistema e marca e vais marcando o que já fizeste: mesma rede Wi-Fi, ativar o modo
-   de programador (7 toques no número de compilação), depuração USB/sem fios, descobrir o IP. Para TVs sem ADB mostra o guia de rede.
-1. **Ligar** – IP da TV, o que está nas portas USB, pareamento (Android 11+) e aprovar o diálogo na TV.
-2. **Backup** – guarda pacotes, desativados, `getprop`, definições global/secure/system e `dumpsys meminfo`
-   na pasta `tv-debloat`, e cria logo `restore.sh` (ou `restore.ps1` no Windows).
-3. **Pacotes** – lista agrupada (1 telemetria · 2 anúncios · 3 serviços dispensáveis · 4 apps pré-instaladas ·
-   5 depende de ti · ? não identificados · 🔒 intocáveis). Lotes de até 10, um comando `pm` por chamada.
-   Depois de cada lote abre-se um ecrã que mostra a TV (captura), com teclas do comando, Entradas/HDMI e
-   Netflix/YouTube. Se algo partir, reativa o lote e testa os pacotes um a um.
-4. **Ecrã inicial** – troca para o FLauncher e só depois desativa o launcher original.
-5. **Final** – animações a 0.5, `pm trim-caches 999G`, reinício, medição antes/depois, relatório e
-   **Restaurar tudo**.
-6. **Anúncios e apps** – DNS privado que filtra anúncios/rastreio (reversível) e instalação de APKs
-   (SmartTube, leitor de IPTV, etc.) que **tu** descarregas de fontes oficiais.
+```bash
+python main.py          # your TV
+python main.py --demo   # simulated TV (pip install pillow)
+```
 
-## Sistemas e marcas
+- Python 3.9+ with Tkinter. Linux: `sudo apt install python3-tk` · macOS: `brew install python-tk`.
+- Optional modern dark theme: `pip install sv-ttk` (without it the default look is used).
+- `adb` is looked up on the PATH; if missing, the **Install adb** button downloads Google's official
+  platform-tools into the program folder.
+- macOS: if `adb` says "No route to host" (Local Network privacy), the program falls back to the
+  Python client `adb-shell` (`pip install adb-shell`). Pairing by code only works with the `adb` binary.
 
-No separador 1 escolhes o sistema e a marca:
+## Flow (7 tabs; each unlocks the next)
 
-| Sistema | ADB | Troca de ecrã inicial | O que o programa faz |
+0. **Prepare** – choose system and brand and tick off what you have done: same Wi-Fi network, Developer mode
+   (tap the build number 7 times), USB/wireless debugging, finding the IP. For TVs without ADB it shows a network guide.
+1. **Connect** – TV IP, what is in the USB ports, pairing (Android 11+) and approving the dialog on the TV.
+2. **Backup** – saves packages, disabled list, `getprop`, global/secure/system settings and `dumpsys meminfo`
+   into the `tv-debloat` folder and immediately creates `restore.sh` (or `restore.ps1` on Windows).
+3. **Packages** – grouped list (1 telemetry · 2 ads · 3 dispensable services · 4 preinstalled apps ·
+   5 your call · ? unidentified · 🔒 untouchable). Batches of up to 10, one `pm` command per call.
+   After each batch a screen shows the TV (screenshot) with remote keys, Inputs/HDMI and Netflix/YouTube.
+   If something breaks, re-enable the batch and test the packages one by one.
+4. **Home screen** – swap to FLauncher, and only then disable the original launcher.
+5. **Final** – animations to 0.5, `pm trim-caches 999G`, reboot, before/after measurement, report and **Restore all**.
+6. **Ads & apps** – private DNS that filters ads/tracking (reversible) and installing APKs
+   (SmartTube, an IPTV player, etc.) that **you** download from official sources.
+
+## Systems and brands
+
+| System | ADB | Home-screen swap | What the program does |
 |---|---|---|---|
-| Android TV / Google TV (TCL, Sony, Xiaomi, Philips, Hisense, Skyworth, Panasonic…) | sim | sim | tudo |
-| Amazon Fire TV | sim | não (o Fire OS não deixa) | debloat + apps; launcher do Fire OS protegido |
-| Samsung (Tizen), LG (webOS), Roku, Vidaa/outros | não | não | só mostra um guia (DNS no router, definições da TV) |
+| Android TV / Google TV (TCL, Sony, Xiaomi, Philips, Hisense, Skyworth, Panasonic…) | yes | yes | everything |
+| Amazon Fire TV | yes | no (Fire OS does not allow it) | debloat + apps; Fire OS launcher protected |
+| Samsung (Tizen), LG (webOS), Roku, Vidaa/others | no | no | shows a guide only (DNS on the router, TV settings) |
 
-Os avisos por marca vêm dos projetos open source [cleanyourtv](https://github.com/Gathin23/cleanyourtv) (MIT)
-e [dumbtv](https://github.com/humblemuzzu/dumbtv) (MIT), que têm listas de pacotes testadas por modelo. Podes
-importar o `debloat.txt` do teu modelo no separador 3 (continua sujeito às proteções).
+Per-brand warnings come from the open-source projects [cleanyourtv](https://github.com/Gathin23/cleanyourtv) (MIT)
+and [dumbtv](https://github.com/humblemuzzu/dumbtv) (MIT), which have per-model tested package lists. You can
+import your model's `debloat.txt` in tab 3 (protections still apply).
 
-## Anúncios: o que funciona e o que não
+## Ads: what works and what doesn't
 
-- **YouTube:** DNS não resolve (anúncios vêm dos mesmos servidores do vídeo). Usa o SmartTube.
-  O SmartTube publicou um aviso de segurança sobre as suas chaves de assinatura: descarrega só do site
-  oficial, na versão mais recente, e confere o SHA-256.
-- **Streaming/telemetria:** o DNS filtrado corta rastreio e parte dos anúncios, não os que vêm dentro do stream.
-- **IPTV:** instala-se só o leitor. Não incluo listas nem serviços de canais.
+- **YouTube:** DNS does not solve it (the ads come from the same servers as the video). Use SmartTube.
+  SmartTube published a security notice about its signing keys: download only from the official site,
+  the latest version, and compare the SHA-256.
+- **Streaming/telemetry:** filtering DNS cuts tracking and some ads, not those inside the stream.
+- **IPTV:** only the player is installed. No lists or channel services are included.
 
-## Regras que o código impõe (não só o texto)
+## Rules enforced by the code (not just text)
 
-- `core/guard.py`: lista branca de comandos. `pm uninstall`, encadeamentos (`;`, `&&`, `|`), root, bootloader,
-  `setprop`, `rm`... são recusados antes de chegar à TV. Instalar só aceita ficheiros que o próprio programa
-  enviou para `/data/local/tmp/tvdebloat-*.apk`; o DNS só aceita três modos e um hostname simples.
-- `core/packages.py`: pacotes intocáveis (HDMI/antena, menu Entradas, comando, teclado, Play Store/Services,
-  `location.fused`, armadilhas TCL, launcher atual) nunca podem ser marcados. Pacotes não identificados são
-  inspecionados com `dumpsys package` e bloqueados se declararem serviços essenciais.
-- Sem backup feito não se desativa nada; máximo de 10 por lote; o launcher original só depois de o
-  FLauncher ser o predefinido.
+- `core/guard.py`: command allowlist. `pm uninstall`, chaining (`;`, `&&`, `|`), root, bootloader,
+  `setprop`, `rm`… are refused before reaching the TV. Install only accepts files the program itself pushed to
+  `/data/local/tmp/tvdebloat-*.apk`; DNS only accepts three modes and a simple hostname.
+- `core/packages.py`: untouchable packages (HDMI/antenna, Inputs menu, remote, keyboard, Play Store/Services,
+  `location.fused`, TCL traps, the current launcher) can never be ticked. Unidentified packages are
+  inspected with `dumpsys package` and blocked if they declare essential services.
+- Nothing is disabled without a backup; at most 10 per batch; the original launcher only after
+  FLauncher is the default.
 
-## Registo
+## Log
 
-`tv-debloat/` contém `disabled.txt`, `restore.sh|ps1`, `DEBLOAT-LOG.md` (o que foi feito, porquê e como
-desfazer cada alteração), `settings_originais.txt`, as capturas em `shots/` e os backups.
-Desfazer tudo: `sh tv-debloat/restore.sh` (ou o botão **Restaurar tudo**).
-Se algo ligado às portas USB da TV deixar de funcionar, desliga a depuração USB.
+`tv-debloat/` holds `disabled.txt`, `restore.sh|ps1`, `DEBLOAT-LOG.md` (what was done, why and how to undo
+each change), `original_settings.txt`, screenshots in `shots/` and the backups.
+Undo everything: `sh tv-debloat/restore.sh` (or the **Restore all** button).
+If something plugged into the TV's USB ports stops working, turn off USB debugging.
 
-## Testes
+## Tests
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Cobrem a guarda de comandos, as proteções, o restauro e o fluxo de lotes com uma TV simulada.
-A interface Tkinter e o contacto com uma TV real não estão cobertos por testes automáticos.
-
-## Capturas de ecrã
-
-Guarda as capturas em `docs/screenshots/` e descomenta as linhas abaixo:
-
-<!--
-![Ligar](docs/screenshots/1-ligar.png)
-![Pacotes](docs/screenshots/3-pacotes.png)
-![Verificação na TV](docs/screenshots/verificar.png)
-![Anúncios e apps](docs/screenshots/6-extras.png)
--->
+They cover the command guard, the protections, restore and the batch flow with a simulated TV.
+The Tkinter interface and contact with a real TV are not covered by automated tests; the interface has only been
+exercised against the simulated TV.

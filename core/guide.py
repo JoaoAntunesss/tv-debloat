@@ -1,60 +1,59 @@
-"""Textos do passo a passo: preparação da TV e frases do 'próximo passo'.
+"""Step-by-step texts: TV preparation and the "next step" banner messages.
 
-Os nomes dos menus variam com a marca e a versão do sistema; os textos dizem sempre o caminho típico.
+Menu names vary by brand and system version; the texts always give the typical path.
 """
 from __future__ import annotations
 
 PREP_STEPS: dict[str, list[tuple[str, str]]] = {
     "androidtv": [
-        ("Liga a TV e este computador à mesma rede",
-         "Os dois no mesmo router, por Wi-Fi ou cabo. Evita redes de convidados/visitantes (isolam os aparelhos)."),
-        ("Ativa o modo de programador na TV",
-         "Definições → Sistema → Acerca de → carrega 7 vezes em 'Compilação' (Build). Aparece uma mensagem a dizer "
-         "que já és programador. Na Google TV: Definições → Sistema → Acerca de → 'Android TV OS build'."),
-        ("Liga a depuração",
-         "Definições → Sistema → Opções de programador: liga 'Depuração USB' e, se existir, 'Depuração sem fios' "
-         "(Android 11 ou mais recente)."),
-        ("Descobre o endereço IP da TV",
-         "Definições → Rede e Internet → a tua rede (ou 'Estado'). É algo como 192.168.1.50. Vais escrevê-lo no "
-         "separador 1."),
-        ("Se existir 'Depuração sem fios': abre-a e vê o código de pareamento",
-         "Em 'Parear dispositivo com código' aparece um IP:porta e um código de 6 dígitos. Vais usá-los no "
-         "separador 1 (a porta de pareamento é diferente da 5555)."),
-        ("Põe o comando à mão e vê o que está nas portas USB da TV",
-         "A TV vai perguntar 'Permitir depuração USB?' e tens de escolher Permitir. Algumas TVs cortam a energia "
-         "às portas USB com a depuração ligada (colunas, discos): diz-me o que lá tens no separador 1."),
+        ("Turn on the TV and this computer on the same network",
+         "Both on the same router, over Wi-Fi or cable. Avoid guest/visitor networks (they isolate devices)."),
+        ("Enable Developer mode on the TV",
+         "Settings → System → About → press 'Build' 7 times. A message says you are now a developer. "
+         "On Google TV: Settings → System → About → 'Android TV OS build'."),
+        ("Turn on debugging",
+         "Settings → System → Developer options: enable 'USB debugging' and, if present, 'Wireless debugging' "
+         "(Android 11 or newer)."),
+        ("Find the TV's IP address",
+         "Settings → Network & Internet → your network (or 'Status'). It looks like 192.168.1.50. You will type "
+         "it in tab 1."),
+        ("If 'Wireless debugging' exists: open it and note the pairing code",
+         "Under 'Pair device with pairing code' you get an IP:port and a 6-digit code. You will use them in "
+         "tab 1 (the pairing port is different from 5555)."),
+        ("Keep the remote at hand and check what is plugged into the TV's USB ports",
+         "The TV will ask 'Allow USB debugging?' and you must choose Allow. Some TVs cut power to the USB "
+         "ports while debugging is on (speakers, disks): tell me what you have there in tab 1."),
     ],
     "firetv": [
-        ("Liga a Fire TV e este computador à mesma rede",
-         "Os dois no mesmo router, por Wi-Fi ou cabo. Evita redes de convidados/visitantes."),
-        ("Ativa as Opções de programador",
-         "Definições → My Fire TV → Acerca de → carrega 7 vezes no nome do aparelho. Depois aparecem as "
-         "'Opções de programador' em My Fire TV."),
-        ("Liga a depuração ADB",
-         "Opções de programador → 'Depuração ADB' ligada. Para instalar APKs liga também 'Aplicações de origens "
-         "desconhecidas'."),
-        ("Descobre o endereço IP",
-         "Definições → My Fire TV → Acerca de → Rede. É algo como 192.168.1.50."),
-        ("Põe o comando à mão",
-         "A Fire TV vai perguntar 'Permitir depuração USB?': escolhe Permitir (e 'Permitir sempre')."),
+        ("Turn on the Fire TV and this computer on the same network",
+         "Both on the same router, over Wi-Fi or cable. Avoid guest/visitor networks."),
+        ("Enable Developer options",
+         "Settings → My Fire TV → About → press the device name 7 times. 'Developer options' then appear in "
+         "My Fire TV."),
+        ("Turn on ADB debugging",
+         "Developer options → 'ADB debugging' on. To install APKs also enable 'Apps from unknown sources'."),
+        ("Find the IP address",
+         "Settings → My Fire TV → About → Network. It looks like 192.168.1.50."),
+        ("Keep the remote at hand",
+         "The Fire TV will ask 'Allow USB debugging?': choose Allow (and 'Always allow')."),
     ],
 }
 
 NEXT = {
-    "start": "Passo 0 — segue a checklist de preparação (separador 0) e escolhe o sistema e a marca da tua TV.",
-    "prep_done": ("✔ Preparação feita. Passo 1 — vai ao separador '1 · Ligar', escreve o IP da TV e carrega em "
-                  "'Ligar à TV'. Quando a TV perguntar 'Permitir depuração USB?', escolhe Permitir."),
-    "no_adb": ("Esta TV não permite ADB, por isso não há mais passos nesta app: segue o guia acima "
-               "(ação ao nível da rede e das definições da TV)."),
-    "connected": ("✔ Ligado. Passo 2 — separador '2 · Backup': escolhe a pasta e carrega em 'Fazer backup'. "
-                  "Ainda não se muda nada na TV."),
-    "backup_done": ("✔ Backup feito (e o script de restauro já existe). Passo 3 — separador '3 · Pacotes': carrega em "
-                    "'Marcar grupos 1 e 2', revê a lista e carrega em 'Desativar selecionados'. Depois de cada lote "
-                    "confirmas no ecrã de verificação."),
-    "verify": ("Confere a TV: o ecrã inicial aparece? O menu Entradas abre? Dá para ir ao HDMI? Se estiver tudo bem, "
-               "'continuar'; se algo partiu, reativa o lote."),
-    "queue_done": ("✔ Lotes concluídos. A seguir (por ordem): passo 4 troca o ecrã inicial por um sem anúncios, "
-                   "passo 6 filtra anúncios por DNS e instala apps, e o passo 5 reduz animações, reinicia e mede a "
-                   "memória antes/depois."),
-    "final": "Passo 5 — gera o relatório: tens a tabela antes/depois e o comando que desfaz tudo.",
+    "start": "Step 0 — follow the preparation checklist (tab 0) and choose your TV's system and brand.",
+    "prep_done": ("✔ Preparation done. Step 1 — go to tab '1 · Connect', type the TV's IP and press "
+                  "'Connect to TV'. When the TV asks 'Allow USB debugging?', choose Allow."),
+    "no_adb": ("This TV does not allow ADB, so there are no more steps in this app: follow the guide above "
+               "(network-level action and TV settings)."),
+    "connected": ("✔ Connected. Step 2 — tab '2 · Backup': choose the folder and press 'Back up'. "
+                  "Nothing is changed on the TV yet."),
+    "backup_done": ("✔ Backup done (and the restore script already exists). Step 3 — tab '3 · Packages': press "
+                    "'Mark groups 1 and 2', review the list and press 'Disable selected'. After each batch "
+                    "you confirm on the verification screen."),
+    "verify": ("Check the TV: does the home screen appear? Does the Inputs menu open? Can you reach HDMI? If all is "
+               "fine, 'continue'; if something broke, re-enable the batch."),
+    "queue_done": ("✔ Batches finished. Next (in order): step 4 swaps the home screen for an ad-free one, "
+                   "step 6 filters ads via DNS and installs apps, and step 5 lowers animations, reboots and "
+                   "measures memory before/after."),
+    "final": "Step 5 — generate the report: you get the before/after table and the command that undoes everything.",
 }

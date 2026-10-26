@@ -1,1 +1,1 @@
-"""Lógica do TV Debloat (sem interface): ADB, classificação de pacotes, registo e sessão."""
+"""TV Debloat logic (no UI): ADB, package classification, logging and session."""

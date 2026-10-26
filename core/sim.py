@@ -1,7 +1,7 @@
-"""TV simulada para o modo demonstração e para gerar capturas de ecrã (não fala com nenhuma TV real).
+"""Simulated TV for demo mode and for generating screenshots (it talks to no real TV).
 
-Usa nomes de pacotes fictícios (com.exampletv.*) misturados com alguns nomes reais conhecidos, só para
-mostrar como a interface funciona. Precisa do Pillow para desenhar o ecrã da TV.
+Uses fictional package names (com.exampletv.*) mixed with a few well-known real ones, just to
+show how the interface works. Needs Pillow to draw the TV screen.
 """
 from __future__ import annotations
 
@@ -30,14 +30,14 @@ PROTECTED_AND_SYSTEM = [
     # grupo 5
     "com.netflix.ninja", "com.google.android.youtube.tv", "com.google.android.katniss",
     "com.google.android.apps.mediashell", "com.exampletv.ota",
-    # não identificados
+    # unidentified
     "com.exampletv.helper", "com.exampletv.misc",
 ]
 USER_PACKAGES = ["me.efesser.flauncher"]
 
 PROPS = {
     "ro.product.brand": "TCL",
-    "ro.product.model": "Smart TV Pro (simulada)",
+    "ro.product.model": "Smart TV Pro (simulated)",
     "ro.build.version.release": "12",
     "ro.build.version.sdk": "31",
     "sys.boot_completed": "1",
@@ -50,7 +50,7 @@ _HOME_ACTIVITIES = {
 
 
 class SimBackend:
-    name = "simulada"
+    name = "simulated"
 
     def __init__(self):
         self.target = None
@@ -67,10 +67,10 @@ class SimBackend:
         self.rebooted = False
         self.installed_apks = []
 
-    # ------------------------------------------------------------------ ligação
+    # ------------------------------------------------------------------ connection
     def connect(self, host, port):
         self.target = f"{host}:{port}"
-        return f"connected to {self.target} (TV simulada)"
+        return f"connected to {self.target} (simulated TV)"
 
     def pair(self, host_port, code):
         return "Successfully paired (simulado)"
@@ -191,14 +191,14 @@ class SimBackend:
             return ""
         if cmd.startswith("rm "):
             return ""
-        raise AdbError(f"A TV simulada não conhece o comando: {cmd}")
+        raise AdbError(f"The simulated TV does not know the command: {cmd}")
 
-    # ------------------------------------------------------------------ ecrã
+    # ------------------------------------------------------------------ screen
     def screencap(self):
         try:
             from PIL import Image, ImageDraw, ImageFont
         except ImportError:
-            raise AdbError("O modo demonstração precisa do Pillow: pip install pillow")
+            raise AdbError("Demo mode needs Pillow: pip install pillow")
         W, H = 960, 540
         img = Image.new("RGB", (W, H), (14, 18, 32))
         d = ImageDraw.Draw(img)
@@ -221,22 +221,22 @@ class SimBackend:
         if self.overlay == "inputs" and self.focus == self.home_default:
             self._draw_home(d, font, tile, W, H)
             d.rectangle([0, 0, 300, H], fill=(10, 10, 14))
-            d.text((24, 28), "Entradas", font=font(28), fill=(255, 255, 255))
-            for i, name in enumerate(("TV (antena)", "HDMI 1", "HDMI 2", "AV")):
+            d.text((24, 28), "Inputs", font=font(28), fill=(255, 255, 255))
+            for i, name in enumerate(("TV (antenna)", "HDMI 1", "HDMI 2", "AV")):
                 d.rounded_rectangle([20, 90 + i * 70, 280, 140 + i * 70], radius=10,
                                     fill=(60, 90, 160) if i == 1 else (36, 38, 52))
                 d.text((38, 102 + i * 70), name, font=font(22), fill=(255, 255, 255))
         elif self.focus == "com.tcl.tvinput":
             d.text((W // 2 - 150, H // 2 - 40), "HDMI 1", font=font(60), fill=(255, 255, 255))
-            d.text((W // 2 - 110, H // 2 + 40), "Sem sinal", font=font(28), fill=(170, 170, 180))
+            d.text((W // 2 - 110, H // 2 + 40), "No signal", font=font(28), fill=(170, 170, 180))
         elif self.focus != self.home_default:
             d.rectangle([0, 0, W, H], fill=(24, 24, 28))
-            d.text((W // 2 - 220, H // 2 - 30), self.focus.split(".")[-1].upper() + " (simulada)",
+            d.text((W // 2 - 220, H // 2 - 30), self.focus.split(".")[-1].upper() + " (simulated)",
                    font=font(44), fill=(255, 255, 255))
         else:
             self._draw_home(d, font, tile, W, H)
 
-        d.text((18, H - 30), "TV SIMULADA — captura de demonstração", font=font(16), fill=(255, 220, 120))
+        d.text((18, H - 30), "SIMULATED TV — demo capture", font=font(16), fill=(255, 220, 120))
         buf = io.BytesIO()
         img.save(buf, "PNG")
         return buf.getvalue()
@@ -246,12 +246,12 @@ class SimBackend:
             d.text((40, 24), "FLauncher", font=font(30), fill=(255, 255, 255))
             colors = [(120, 70, 160), (30, 120, 140), (160, 70, 70), (60, 120, 70), (140, 110, 40),
                       (70, 80, 150), (110, 60, 110), (40, 110, 110)]
-            names = ["Apps", "Vídeo", "Música", "Jogos", "Definições", "Ficheiros", "Fotos", "Mais"]
+            names = ["Apps", "Video", "Music", "Games", "Settings", "Files", "Photos", "More"]
             for i, (c, n) in enumerate(zip(colors, names)):
                 tile(40 + (i % 4) * 225, 100 + (i // 4) * 190, 205, 170, c, n)
         else:
-            d.text((40, 24), "Início", font=font(30), fill=(255, 255, 255))
-            tile(40, 90, 880, 150, (150, 60, 60), "Em destaque para ti", sub="PATROCINADO")
-            d.text((40, 258), "Recomendado", font=font(22), fill=(220, 220, 230))
+            d.text((40, 24), "Home", font=font(30), fill=(255, 255, 255))
+            tile(40, 90, 880, 150, (150, 60, 60), "Featured for you", sub="SPONSORED")
+            d.text((40, 258), "Recommended", font=font(22), fill=(220, 220, 230))
             for i, c in enumerate([(70, 80, 150), (60, 120, 70), (140, 110, 40), (110, 60, 110)]):
-                tile(40 + i * 225, 296, 205, 140, c, f"Sugestão {i + 1}", sub="ANÚNCIO" if i == 1 else None)
+                tile(40 + i * 225, 296, 205, 140, c, f"Suggestion {i + 1}", sub="AD" if i == 1 else None)

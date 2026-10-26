@@ -1,6 +1,6 @@
-"""Gera as capturas de docs/screenshots/ a partir da janela real, contra a TV simulada.
+"""Generate the docs/screenshots/ captures from the real window, against the simulated TV.
 
-Precisa de um ecrã X (em Linux sem ambiente gráfico: Xvfb) e de ImageMagick (`import`):
+Needs an X display (on headless Linux: Xvfb) and ImageMagick (`import`):
     Xvfb :99 -screen 0 1400x1100x24 &
     DISPLAY=:99 python tools/make_screenshots.py docs/screenshots
 """
@@ -20,7 +20,7 @@ from ui.widgets import VerifyDialog  # noqa: E402
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "docs/screenshots")
 OUT.mkdir(parents=True, exist_ok=True)
 
-# Sem diálogos modais a bloquear: respondemos "sim" ao que o utilizador confirmaria.
+# No blocking modal dialogs: answer "yes" to what the user would confirm.
 messagebox.askyesno = lambda *a, **k: True
 messagebox.showinfo = messagebox.showwarning = messagebox.showerror = lambda *a, **k: None
 
@@ -33,7 +33,7 @@ def settle(app, idle_needed=12, timeout=60):
         idle = idle + 1 if (app._busy == 0 and app.q.empty()) else 0
         if idle >= idle_needed:
             return
-    raise TimeoutError("a interface não assentou")
+    raise TimeoutError("the interface did not settle")
 
 
 def shot(app_or_win, name):
@@ -53,20 +53,20 @@ enable_demo(app)
 app.geometry("1280x900+0+0")
 settle(app)
 
-# 0 · Preparar (com alguns passos já marcados)
+# 0 · Prepare (with some steps already ticked)
 for v in app.prep_vars[:3]:
     v.set(True)
 app.nb.select(TAB_START)
-shot(app, "0-preparar")
+shot(app, "0-prepare")
 for v in app.prep_vars:
     v.set(True)
 settle(app)
 
-# 0b · uma TV sem ADB (Samsung)
+# 0b · a TV without ADB (Samsung)
 app.v_platform.set("Samsung (Tizen)")
 app.on_platform_change()
 settle(app)
-shot(app, "0b-samsung-sem-adb")
+shot(app, "0b-samsung-no-adb")
 app.v_platform.set("Android TV / Google TV")
 app.on_platform_change()
 app.v_brand.set("TCL")
@@ -75,9 +75,9 @@ for v in app.prep_vars:
     v.set(True)
 app.v_model.set("TCL Smart TV Pro")
 
-# 1 · Ligar
+# 1 · Connect
 app.nb.select(TAB_CONNECT)
-shot(app, "1-ligar")
+shot(app, "1-connect")
 app.do_connect()
 settle(app)
 app.v_base.set(tempfile.mkdtemp(prefix="tv-debloat-demo-"))
@@ -88,7 +88,7 @@ settle(app)
 app.nb.select(TAB_BACKUP)
 shot(app, "2-backup")
 
-# 3 · Pacotes
+# 3 · Packages
 app.nb.select(TAB_PACKAGES)
 app.mark_12()
 app.refresh_tree()
@@ -99,26 +99,26 @@ app.tree.selection_set("com.exampletv.acr")
 app.tree.see("com.exampletv.acr")
 app.on_tree_select()
 settle(app)
-shot(app, "3-pacotes")
+shot(app, "3-packages")
 
-# 3b · desativar em lote + ecrã de verificação
+# 3b · disable a batch + verification screen
 app.sel |= {"com.exampletv.cleaner", "com.exampletv.weather"}
 app.start_disable()
 settle(app)
 dlg = dialogs(app)[0]
 dlg.geometry("+40+10")
 settle(app)
-shot(dlg, "4-verificacao")
-dlg._ok()  # "Está tudo bem — continuar"
+shot(dlg, "4-verification")
+dlg._ok()  # "All good — continue"
 settle(app)
 
-# 6 · Anúncios e apps
+# 6 · Ads & apps
 app.nb.select(TAB_EXTRAS)
 app.app_list.selection_set(0)
 app.on_app_select()
-shot(app, "6-anuncios-apps")
+shot(app, "6-ads-apps")
 
-# 5 · Final (reinicia a TV simulada, mede e gera o relatório)
+# 5 · Final (reboots the simulated TV, measures and generates the report)
 app.nb.select(TAB_FINAL)
 app.do_speedups()
 settle(app)

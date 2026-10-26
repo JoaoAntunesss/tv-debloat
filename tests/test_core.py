@@ -56,7 +56,7 @@ class FakeAdb:
                          "animator_duration_scale": "1.0"}
 
     def shell(self, cmd, timeout=60):
-        cmd = check_shell(cmd)  # igual à fachada real: a guarda corre sempre
+        cmd = check_shell(cmd)  # same as the real facade: the guard always runs
         self.calls.append(cmd)
         if cmd == "pm list packages -f":
             return PM_F
@@ -208,7 +208,7 @@ class ClassifierTests(unittest.TestCase):
         self.assertEqual(self.clf.classify("me.efesser.flauncher").group, 6)
         unlocked = Classifier({"me.efesser.flauncher"}, allow_launcher_disable=True)
         self.assertEqual(unlocked.classify("com.google.android.tvlauncher").group, 4)
-        self.assertEqual(unlocked.classify("me.efesser.flauncher").group, 6)  # nunca o novo
+        self.assertEqual(unlocked.classify("me.efesser.flauncher").group, 6)  # never the new one
 
     def test_groups(self):
         self.assertEqual(self.clf.classify("com.sambatv.acr").group, 1)
@@ -234,15 +234,15 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(m["Free"], 1016404)
         self.assertEqual(m["Used"], 652000)
         rows = memory_rows({"Total": 1024, "Free": 512, "Used": 512}, {"Total": 1024, "Free": 768, "Used": 256})
-        self.assertEqual(rows[1], ("RAM livre", "0 MB", "1 MB", "+0 MB"))
+        self.assertEqual(rows[1], ("Free RAM", "0 MB", "1 MB", "+0 MB"))
 
     def test_record_and_restore_sh(self):
         with tempfile.TemporaryDirectory() as d:
             ws = Workspace(d, "192.168.1.50:5555", windows=False)
             ws.start_restore()
             ws.record_disable("com.a", 1, "Telemetria")
-            ws.record_disable("com.a", 1, "Telemetria")  # sem duplicados em disabled.txt
-            ws.record_disable("com.b", 2, "Anúncios")
+            ws.record_disable("com.a", 1, "Telemetry")  # no duplicates in disabled.txt
+            ws.record_disable("com.b", 2, "Ads")
             self.assertEqual(ws.read_disabled(), ["com.a", "com.b"])
             restore = ws.restore_path.read_text(encoding="utf-8")
             self.assertIn("pm enable com.a", restore)
@@ -265,7 +265,7 @@ class WorkspaceTests(unittest.TestCase):
             ws = Workspace(d, "x:5555", windows=False)
             ws.start_restore()
             ws.record_setting("window_animation_scale", "1.0\n")
-            ws.record_setting("window_animation_scale", "0.5\n")  # não pode sobrepor o original
+            ws.record_setting("window_animation_scale", "0.5\n")  # must not overwrite the original
             self.assertEqual(ws.read_original_settings(), {"window_animation_scale": "1.0"})
             self.assertEqual(ws.restore_path.read_text(encoding="utf-8").count("window_animation_scale"), 1)
 
@@ -297,9 +297,9 @@ class SessionTests(unittest.TestCase):
         s = self.make()
         s.scan()
         with self.assertRaises(SessionError):
-            s.disable_batch(["com.sambatv.acr"], "Lote 1")  # sem backup
+            s.disable_batch(["com.sambatv.acr"], "Batch 1")  # no backup
         s.backup()
-        self.assertTrue(s.ws.restore_path.exists())  # restore criado com o backup
+        self.assertTrue(s.ws.restore_path.exists())  # restore created with the backup
         names = {p.name for p in s.backup_dir.iterdir()}
         self.assertEqual(len(names), 7)
         self.assertEqual(s.mem_before["Total"], 1847068)
@@ -321,7 +321,7 @@ class SessionTests(unittest.TestCase):
         for bad in ("com.tcl.suspension", "com.google.android.tvlauncher"):
             with self.assertRaises(SessionError, msg=bad):
                 s.disable_batch([bad], "x")
-        with self.assertRaises(SessionError):  # desconhecido sem confirmação
+        with self.assertRaises(SessionError):  # unknown without confirmation
             s.disable_batch(["com.example.mystery"], "x")
         s.disable_batch(["com.example.mystery"], "x", confirmed_unknown={"com.example.mystery"})
         self.assertFalse(any("uninstall" in c for c in self.adb.calls))
@@ -348,11 +348,11 @@ class SessionTests(unittest.TestCase):
         s.backup()
         s.scan()
         with self.assertRaises(SessionError):
-            s.unlock_launcher_disable()  # o predefinido ainda é o launcher original
+            s.unlock_launcher_disable()  # the default is still the original launcher
         cur = s.set_home("me.efesser.flauncher/me.efesser.flauncher.MainActivity")
         self.assertEqual(cur, "me.efesser.flauncher")
         s.unlock_launcher_disable()
-        res = s.disable_batch(["com.google.android.tvlauncher"], "Ecrã inicial")
+        res = s.disable_batch(["com.google.android.tvlauncher"], "Home screen")
         self.assertEqual(res.ok, ["com.google.android.tvlauncher"])
 
     def test_speedups_and_restore_all(self):
@@ -360,7 +360,7 @@ class SessionTests(unittest.TestCase):
         s.backup()
         s.scan()
         s.apply_speedups()
-        s.apply_speedups()  # repetir não perde os valores originais
+        s.apply_speedups()  # repeating does not lose the original values
         self.assertEqual(s.ws.read_original_settings()["animator_duration_scale"], "1.0")
         s.disable_batch(["com.sambatv.acr"], "Lote 1")
         s.restore_all()
@@ -380,7 +380,7 @@ class SessionTests(unittest.TestCase):
         remote = self.adb.pushed[0][1]
         self.assertIn(sha[:16], remote)
         self.assertIn(f"pm install -r {remote}", self.adb.calls)
-        self.assertIn(f"rm {remote}", self.adb.calls)  # limpa a pasta temporária
+        self.assertIn(f"rm {remote}", self.adb.calls)  # cleans the temp folder
         self.assertIn(sha, s.ws.log_path.read_text(encoding="utf-8"))
         self.assertFalse(any("uninstall" in c for c in self.adb.calls))
 
@@ -424,7 +424,7 @@ class SessionTests(unittest.TestCase):
         s.brand = get_brand("firetv", "Fire TV Stick / Cube")
         s.platform = PLATFORMS["firetv"]
         s.scan()
-        s.infos["com.example.mystery"].verdict  # existe
+        s.infos["com.example.mystery"].verdict  # exists
         clf = s._classifier()
         self.assertEqual(clf.classify("com.amazon.tv.launcher").group, 6)
 
@@ -435,7 +435,7 @@ class SessionTests(unittest.TestCase):
         s.disable_batch(["com.sambatv.acr"], "Lote 1")
         s.measure_after()
         rep = s.final_report()
-        self.assertIn("| RAM total |", rep)
+        self.assertIn("| Total RAM |", rep)
         self.assertIn("com.sambatv.acr", rep)
         self.assertIn("restore.sh", rep)
 

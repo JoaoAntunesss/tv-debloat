@@ -1,8 +1,8 @@
-"""Sistemas e marcas de TV suportados, com o que cada um permite e os avisos conhecidos.
+"""Supported TV systems and brands, what each allows, and known warnings.
 
-Fontes (pesquisa de 2026-10-26): repositórios cleanyourtv (MIT, Android TV/Google TV) e dumbtv
-(MIT, Fire TV; docs/OTHER-TVS.md para Samsung/LG/Roku). Os nomes concretos de pacotes por modelo
-vivem nas listas desses projetos: aqui só se guarda o que é seguro generalizar.
+Sources (researched 2026-10-26): the cleanyourtv (MIT, Android TV/Google TV) and dumbtv
+(MIT, Fire TV; docs/OTHER-TVS.md for Samsung/LG/Roku) repositories. Concrete per-model package names
+live in those projects' lists: only what is safe to generalize is kept here.
 """
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 class Platform:
     key: str
     name: str
-    adb: bool  # permite pm disable-user por ADB?
-    launcher_swap: bool  # permite trocar o ecrã inicial?
-    dns_on_device: bool  # permite DNS privado do Android pelo ADB?
+    adb: bool  # allows pm disable-user over ADB?
+    launcher_swap: bool  # allows swapping the home screen?
+    dns_on_device: bool  # allows Android private DNS via ADB?
     notes: tuple[str, ...] = ()
 
 
@@ -23,57 +23,57 @@ class Platform:
 class Brand:
     name: str
     notes: tuple[str, ...] = ()
-    extra_protected: dict = field(default_factory=dict)  # pacote -> razão
+    extra_protected: dict = field(default_factory=dict)  # package -> reason
 
 
 PLATFORMS: dict[str, Platform] = {
     "androidtv": Platform(
         "androidtv", "Android TV / Google TV", adb=True, launcher_swap=True, dns_on_device=True,
-        notes=("É o caso com mais suporte: desativa pacotes por ADB e troca o ecrã inicial.",),
+        notes=("The best-supported case: disable packages over ADB and swap the home screen.",),
     ),
     "firetv": Platform(
         "firetv", "Amazon Fire TV (Fire OS)", adb=True, launcher_swap=False, dns_on_device=False,
         notes=(
-            "O Fire OS não deixa um launcher de terceiros ficar com o botão Home: só se faz o debloat.",
-            "Bloquear servidores da Amazon por DNS também pode bloquear atualizações do Fire OS.",
-            "Fire TV Box de 2015 (Fire OS 5) recusa todos os comandos 'pm'.",
-            "Fire TV novas com VegaOS não são suportadas (nem pelo SmartTube).",
+            "Fire OS does not let a third-party launcher take over the Home button: only debloat is possible.",
+            "Blocking Amazon servers via DNS can also block Fire OS updates.",
+            "The 2015 Fire TV Box (Fire OS 5) rejects all 'pm' commands.",
+            "New Fire TVs running VegaOS are not supported (not even by SmartTube).",
         ),
     ),
     "tizen": Platform(
         "tizen", "Samsung (Tizen)", adb=False, launcher_swap=False, dns_on_device=False,
-        notes=("Sem shell nem alteração de pacotes no aparelho.",),
+        notes=("No shell or package changes on the device.",),
     ),
     "webos": Platform(
         "webos", "LG (webOS)", adb=False, launcher_swap=False, dns_on_device=False,
-        notes=("Pacotes só em modo programador/homebrew; sem trocar o launcher.",),
+        notes=("Packages only in developer/homebrew mode; no launcher swap.",),
     ),
     "roku": Platform(
-        "roku", "Roku (e TVs com Roku)", adb=False, launcher_swap=False, dns_on_device=False,
-        notes=("Sem shell, sem pacotes, sem launcher alternativo.",),
+        "roku", "Roku (and Roku TVs)", adb=False, launcher_swap=False, dns_on_device=False,
+        notes=("No shell, no packages, no alternative launcher.",),
     ),
     "other": Platform(
-        "other", "Outro (Vidaa, Netrange, Linux do fabricante…)", adb=False, launcher_swap=False,
+        "other", "Other (Vidaa, Netrange, manufacturer Linux…)", adb=False, launcher_swap=False,
         dns_on_device=False,
-        notes=("Normalmente fechado: só dá para agir pela rede ou pelas definições da TV.",),
+        notes=("Usually closed: you can only act via the network or the TV settings.",),
     ),
 }
 
-_GEN = "Faz sempre o backup primeiro; as listas por modelo são heurísticas e a TV pode ter pacotes que não conheço."
+_GEN = "Always back up first; per-model lists are heuristics and the TV may have packages I do not know."
 
 BRANDS: dict[str, list[Brand]] = {
     "androidtv": [
         Brand("TCL", (
-            "Há armadilhas conhecidas (menu Entradas, atualizações, Wi-Fi, comando): estão protegidas.",
-            "Alguns modelos do mercado chinês recusam qualquer launcher alternativo.",
+            "There are known traps (Inputs menu, updates, Wi-Fi, remote): they are protected.",
+            "Some Chinese-market models refuse any alternative launcher.",
         )),
-        Brand("Sony", ("Há modelos com particularidades de firmware/região. " + _GEN,)),
+        Brand("Sony", ("Some models have firmware/region quirks. " + _GEN,)),
         Brand("Xiaomi / Redmi", (
-            "O Redmi TV MiTV-ANTL0 corre Android 5.1.1 e não é Android TV: confirma o teu modelo.",
+            "The Redmi TV MiTV-ANTL0 runs Android 5.1.1 and is not Android TV: check your model.",
         )),
         Brand("Philips", (_GEN,)),
         Brand("Hisense", (_GEN,)),
-        Brand("Skyworth", ("O modelo 8R40_K5C corre Android 8.0 e não é Google TV.",)),
+        Brand("Skyworth", ("The 8R40_K5C model runs Android 8.0 and is not Google TV.",)),
         Brand("Panasonic", (_GEN,)),
         Brand("Sharp", (_GEN,)),
         Brand("Thomson", (_GEN,)),
@@ -81,48 +81,48 @@ BRANDS: dict[str, list[Brand]] = {
         Brand("Haier", (_GEN,)),
         Brand("OnePlus", (_GEN,)),
         Brand("NVIDIA Shield", (_GEN,)),
-        Brand("Google (Chromecast com Google TV / TV Streamer)", (
-            "Pode exigir 'Depuração sem fios' com código de pareamento (usa o campo de pareamento).",
+        Brand("Google (Chromecast with Google TV / TV Streamer)", (
+            "May require 'Wireless debugging' with a pairing code (use the pairing field).",
         )),
-        Brand("Outra marca", (_GEN,)),
+        Brand("Other brand", (_GEN,)),
     ],
     "firetv": [
-        Brand("Fire TV Stick / Cube", (), {"com.amazon.tv.launcher": "ecrã inicial do Fire OS (não substituível)"}),
-        Brand("Fire TV Edition (TVs Insignia, Toshiba, etc.)", (),
-              {"com.amazon.tv.launcher": "ecrã inicial do Fire OS (não substituível)"}),
+        Brand("Fire TV Stick / Cube", (), {"com.amazon.tv.launcher": "Fire OS home screen (cannot be replaced)"}),
+        Brand("Fire TV Edition (Insignia, Toshiba TVs, etc.)", (),
+              {"com.amazon.tv.launcher": "Fire OS home screen (cannot be replaced)"}),
     ],
     "tizen": [Brand("Samsung")],
     "webos": [Brand("LG")],
-    "roku": [Brand("Roku / TV com Roku")],
-    "other": [Brand("Vidaa (Hisense)"), Brand("Outra")],
+    "roku": [Brand("Roku / Roku TV")],
+    "other": [Brand("Vidaa (Hisense)"), Brand("Other")],
 }
 
-# Texto para plataformas sem ADB (a ação possível é a nível de rede ou nas definições da TV).
+# Text for platforms without ADB (the possible action is at network level or in the TV settings).
 _NETWORK_COMMON = (
-    "O que funciona em qualquer TV fechada, sem a modificar:\n"
-    "• Bloquear anúncios e telemetria no router/rede com um DNS que filtra: NextDNS, AdGuard Home ou Pi-hole.\n"
-    "• Se usas a TV só como ecrã (HDMI, caixa externa), não lhe dês acesso à internet.\n"
-    "• Anúncios dentro de apps de streaming/YouTube continuam: para isso usa uma caixa Android TV/Fire TV "
-    "(ex.: com SmartTube) ligada por HDMI.\n"
+    "What works on any closed TV, without modifying it:\n"
+    "• Block ads and telemetry at the router/network with a filtering DNS: NextDNS, AdGuard Home or Pi-hole.\n"
+    "• If you use the TV only as a screen (HDMI, external box), do not give it internet access.\n"
+    "• Ads inside streaming/YouTube apps remain: for that use an Android TV/Fire TV box (e.g. with SmartTube) "
+    "connected over HDMI.\n"
 )
 
 _ON_TV = {
     "tizen": (
-        "Definições na TV (os nomes variam com o ano e a versão; confirma no teu menu):\n"
-        "• Termos e privacidade: desligar 'Serviços de informação de visualização' e anúncios por interesses.\n"
-        "• Não aceitar serviços/termos opcionais no arranque."
+        "TV settings (names vary by year and version; check your menu):\n"
+        "• Terms & privacy: turn off 'Viewing information services' and interest-based ads.\n"
+        "• Do not accept optional services/terms at first start-up."
     ),
     "webos": (
-        "Definições na TV (os nomes variam com o ano e a versão; confirma no teu menu):\n"
-        "• Desligar 'Live Plus' (reconhecimento de conteúdo) e limitar o rastreio de anúncios.\n"
-        "• Desligar recomendações/promoções no ecrã inicial, se existirem."
+        "TV settings (names vary by year and version; check your menu):\n"
+        "• Turn off 'Live Plus' (content recognition) and limit ad tracking.\n"
+        "• Turn off recommendations/promotions on the home screen, if present."
     ),
     "roku": (
-        "Definições na TV (os nomes variam com a versão; confirma no teu menu):\n"
-        "• Privacidade: desligar 'Usar informação das entradas da TV' (reconhecimento de conteúdo).\n"
-        "• Limitar o rastreio de anúncios."
+        "TV settings (names vary by version; check your menu):\n"
+        "• Privacy: turn off 'Use info from TV inputs' (content recognition).\n"
+        "• Limit ad tracking."
     ),
-    "other": "Procura nas definições de privacidade o reconhecimento de conteúdo (ACR) e os anúncios personalizados.",
+    "other": "Look in the privacy settings for content recognition (ACR) and personalized ads.",
 }
 
 

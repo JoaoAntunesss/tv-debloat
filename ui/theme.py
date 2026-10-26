@@ -1,4 +1,4 @@
-"""Aspeto moderno (escuro, com destaque neon). Usa sv-ttk se existir; senão fica o aspeto padrão."""
+"""Modern look (dark, neon accent). Uses sv-ttk if available; otherwise the default look stays."""
 from __future__ import annotations
 
 from tkinter import ttk
@@ -36,13 +36,13 @@ def apply(root) -> None:
     st.configure("TLabelframe.Label", foreground=ACCENT, font=(FONT[0], 10, "bold"))
     st.configure("Treeview", rowheight=26)
     st.configure("Treeview.Heading", font=(FONT[0], 10, "bold"))
-    # notebook sem separadores: a navegação é a barra lateral
+    # notebook without tabs: navigation is the sidebar
     st.layout("Tabless.TNotebook.Tab", [])
     st.configure("Tabless.TNotebook", borderwidth=0, tabmargins=0)
 
 
 def style_text(widget) -> None:
-    """Caixas de texto/listas clássicas do Tk (não seguem o tema ttk)."""
+    """Classic Tk text boxes/lists (they do not follow the ttk theme)."""
     try:
         widget.configure(bg=CARD, fg=TEXT, insertbackground=TEXT, relief="flat", highlightthickness=1,
                          highlightbackground=LINE, highlightcolor=ACCENT, selectbackground="#27407a",

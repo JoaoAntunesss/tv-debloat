@@ -1,4 +1,4 @@
-"""Cliente ADB: usa o binário `adb`; no macOS, se o Local Network bloquear, cai para `adb-shell` (Python)."""
+"""ADB client: uses the `adb` binary; on macOS, if Local Network blocks it, falls back to `adb-shell` (Python)."""
 from __future__ import annotations
 
 import io
@@ -41,24 +41,24 @@ def find_adb(app_dir) -> Path | None:
 
 
 def install_platform_tools(app_dir, log=print) -> Path:
-    """Descarrega o platform-tools oficial da Google para <app>/platform-tools."""
+    """Download Google's official platform-tools into <app>/platform-tools."""
     system = platform.system()
     if system not in _ZIPS:
-        raise AdbError(f"Sistema não suportado para instalação automática: {system}")
+        raise AdbError(f"System not supported for automatic installation: {system}")
     dest = Path(app_dir).resolve()
     url = _BASE + _ZIPS[system]
-    log(f"A descarregar {url} …")
+    log(f"Downloading {url} …")
     data = urlopen(url, timeout=120).read()
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         for member in z.namelist():
             target = (dest / member).resolve()
             if dest != target and dest not in target.parents:
-                raise AdbError("O zip descarregado tem caminhos suspeitos; abortado.")
+                raise AdbError("The downloaded zip has suspicious paths; aborted.")
         z.extractall(dest)
     adb = dest / "platform-tools" / _exe()
     if system != "Windows":
         adb.chmod(0o755)
-    log(f"adb instalado em {adb}")
+    log(f"adb installed at {adb}")
     return adb
 
 
@@ -82,9 +82,9 @@ class CliBackend:
         try:
             p = subprocess.run([self.adb, *args], capture_output=True, timeout=timeout, creationflags=flags)
         except subprocess.TimeoutExpired:
-            raise AdbError(f"O comando 'adb {' '.join(args[:2])}' demorou mais de {timeout}s.")
+            raise AdbError(f"The command 'adb {' '.join(args[:2])}' took longer than {timeout}s.")
         except OSError as e:
-            raise AdbError(f"Não consegui executar o adb: {e}")
+            raise AdbError(f"Could not run adb: {e}")
         return p.returncode, p.stdout, p.stderr
 
     @staticmethod
@@ -97,7 +97,7 @@ class CliBackend:
         text = self._text(out + err)
         low = text.lower()
         if "connected to" not in low or any(w in low for w in ("failed", "cannot", "unable")):
-            raise AdbError(text or "adb connect falhou sem mensagem.")
+            raise AdbError(text or "adb connect failed with no message.")
         self.target = target
         return text
 
@@ -105,7 +105,7 @@ class CliBackend:
         rc, out, err = self._run(["pair", host_port, code], 30)
         text = self._text(out + err)
         if "successfully paired" not in text.lower():
-            raise AdbError(text or "O pareamento falhou.")
+            raise AdbError(text or "Pairing failed.")
         return text
 
     def state(self):
@@ -123,7 +123,7 @@ class CliBackend:
         rc, out, err = self._run(["-s", self.target, "shell", cmd], timeout)
         e = self._text(err).lower()
         if "unauthorized" in e:
-            raise AdbError("A TV ainda não autorizou este computador (diálogo 'Permitir depuração USB?').")
+            raise AdbError("The TV has not yet authorized this computer ('Allow USB debugging?' dialog).")
         if any(w in e for w in ("device offline", "no devices", "not found", "closed")) and not out:
             raise AdbError(self._text(err))
         text = out.decode("utf-8", "replace")
@@ -134,14 +134,14 @@ class CliBackend:
     def screencap(self):
         rc, out, err = self._run(["-s", self.target, "exec-out", "screencap", "-p"], 40)
         if not out.startswith(b"\x89PNG"):
-            raise AdbError("O screencap não devolveu uma imagem PNG: " + self._text(err or out[:200]))
+            raise AdbError("screencap did not return a PNG image: " + self._text(err or out[:200]))
         return out
 
     def push(self, local, remote):
         rc, out, err = self._run(["-s", self.target, "push", str(local), remote], 900)
         text = self._text(out + err)
         if rc != 0 or "error" in text.lower() and "pushed" not in text.lower():
-            raise AdbError(text or "O envio do ficheiro para a TV falhou.")
+            raise AdbError(text or "Sending the file to the TV failed.")
         return text
 
     def disconnect(self):
@@ -150,7 +150,7 @@ class CliBackend:
 
 
 class PyBackend:
-    """Cliente ADB em Python puro (pacote `adb-shell`), para o macOS quando o adb dá 'No route to host'."""
+    """Pure-Python ADB client (`adb-shell` package), for macOS when adb says 'No route to host'."""
 
     name = "adb-shell"
 
@@ -164,7 +164,7 @@ class PyBackend:
             from adb_shell.auth.keygen import keygen
             from adb_shell.auth.sign_pythonrsa import PythonRSASigner
         except ImportError:
-            raise AdbError("Falta o pacote 'adb-shell'. Instala com: pip install adb-shell")
+            raise AdbError("The 'adb-shell' package is missing. Install it with: pip install adb-shell")
         self.key_dir.mkdir(parents=True, exist_ok=True)
         priv = self.key_dir / "adbkey"
         if not priv.exists():
@@ -176,18 +176,18 @@ class PyBackend:
         try:
             from adb_shell.adb_device import AdbDeviceTcp
         except ImportError:
-            raise AdbError("Falta o pacote 'adb-shell'. Instala com: pip install adb-shell")
+            raise AdbError("The 'adb-shell' package is missing. Install it with: pip install adb-shell")
         signer = self._signer()
         self.dev = AdbDeviceTcp(host, int(port), default_transport_timeout_s=15.0)
         try:
             self.dev.connect(rsa_keys=[signer], auth_timeout_s=60)
-        except Exception as e:  # a biblioteca levanta vários tipos
-            raise AdbError(f"adb-shell não conseguiu ligar: {e}")
+        except Exception as e:  # the library raises several types
+            raise AdbError(f"adb-shell could not connect: {e}")
         self.target = f"{host}:{port}"
         return f"connected to {self.target} (adb-shell)"
 
     def pair(self, host_port, code):
-        raise AdbError("O pareamento por código só funciona com o binário adb.")
+        raise AdbError("Pairing by code only works with the adb binary.")
 
     def state(self):
         return "device" if self.dev is not None and self.dev.available else "disconnected"
@@ -196,7 +196,7 @@ class PyBackend:
         try:
             return self.dev.shell(cmd, timeout_s=timeout, read_timeout_s=timeout)
         except Exception as e:
-            raise AdbError(f"adb-shell falhou: {e}")
+            raise AdbError(f"adb-shell failed: {e}")
 
     def screencap(self):
         try:
@@ -205,16 +205,16 @@ class PyBackend:
             except AttributeError:
                 data = self.dev.shell("screencap -p", timeout_s=40, decode=False)
         except Exception as e:
-            raise AdbError(f"adb-shell falhou no screencap: {e}")
+            raise AdbError(f"adb-shell failed on screencap: {e}")
         if not data.startswith(b"\x89PNG"):
-            raise AdbError("O screencap não devolveu uma imagem PNG.")
+            raise AdbError("screencap did not return a PNG image.")
         return data
 
     def push(self, local, remote):
         try:
             self.dev.push(str(local), remote)
         except Exception as e:
-            raise AdbError(f"adb-shell falhou no envio do ficheiro: {e}")
+            raise AdbError(f"adb-shell failed sending the file: {e}")
         return "pushed"
 
     def disconnect(self):
@@ -226,7 +226,7 @@ class PyBackend:
 
 
 class Adb:
-    """Fachada: todos os comandos passam pela guarda (core.guard) antes de chegar à TV."""
+    """Facade: every command goes through the guard (core.guard) before reaching the TV."""
 
     def __init__(self, backend, app_dir=".", log=print):
         self.backend = backend
@@ -234,7 +234,7 @@ class Adb:
         self.log = log
         self.host = None
         self.port = 5555
-        self._lock = threading.Lock()  # um comando de cada vez na TV (o diálogo e a fila usam threads)
+        self._lock = threading.Lock()  # one command at a time on the TV (the dialog and the queue use threads)
 
     @property
     def backend_name(self):
@@ -277,7 +277,7 @@ class Adb:
 
     def reconnect(self):
         if not self.host:
-            raise AdbError("Nunca houve ligação a uma TV.")
+            raise AdbError("There has never been a connection to a TV.")
         return self.backend.connect(self.host, self.port)
 
     def shell(self, cmd, timeout=60):
@@ -290,9 +290,9 @@ class Adb:
             return self.backend.screencap()
 
     def push(self, local, remote):
-        """Só se envia para a pasta temporária e com o prefixo deste programa (ver guard)."""
+        """Only push to the temp folder and with this program's prefix (see guard)."""
         if not re.fullmatch(r"/data/local/tmp/tvdebloat-[A-Za-z0-9]{8,64}\.apk", remote):
-            raise AdbError("Destino de envio recusado.")
+            raise AdbError("Push destination refused.")
         with self._lock:
             return self.backend.push(local, remote)
 

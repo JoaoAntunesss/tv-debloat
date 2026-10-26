@@ -1,4 +1,4 @@
-"""Modo demonstração: liga a janela a uma TV simulada (sem tocar em nenhuma TV real)."""
+"""Demo mode: connects the window to a simulated TV (touches no real TV)."""
 from __future__ import annotations
 
 import time
@@ -14,7 +14,7 @@ def enable_demo(app) -> None:
     m.CliBackend = lambda _p: SimBackend()
     m.port_open = lambda _h, _p, timeout=3.0: True
     app.sleep_fn = lambda s: time.sleep(min(s, 0.15))
-    app.title(app.title() + " — MODO DEMONSTRAÇÃO (TV simulada)")
+    app.title(app.title() + " — DEMO MODE (simulated TV)")
     app.v_ip.set("192.168.1.50")
     app.v_usb.set("nada")
     app._refresh_adb_status()
