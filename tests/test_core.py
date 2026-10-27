@@ -69,6 +69,11 @@ class FakeAdb:
         if cmd.startswith("cmd package set-home-activity"):
             self.home_default = cmd.split()[-1].split("/")[0]
             return "Success"
+        if cmd.startswith("cmd role add-role-holder"):
+            self.home_default = cmd.split()[-1]
+            return "Success"
+        if cmd.startswith("cmd role get-role-holders"):
+            return self.home_default
         if cmd.startswith("pm disable-user"):
             return f"Package {cmd.split()[-1]} new state: disabled-user"
         if cmd.startswith("pm enable"):
@@ -354,6 +359,22 @@ class SessionTests(unittest.TestCase):
         s.unlock_launcher_disable()
         res = s.disable_batch(["com.google.android.tvlauncher"], "Home screen")
         self.assertEqual(res.ok, ["com.google.android.tvlauncher"])
+
+    def test_set_home_falls_back_to_role_when_first_method_is_ignored(self):
+        s = self.make()
+        s.backup()
+        s.scan()
+        orig = self.adb.shell
+
+        def shell(cmd, timeout=60):
+            if cmd.startswith("cmd package set-home-activity"):
+                return "Success\n"  # reports success but changes nothing (what the real TV did)
+            return orig(cmd, timeout)
+
+        self.adb.shell = shell
+        cur = s.set_home("me.efesser.flauncher/me.efesser.flauncher.MainActivity")
+        self.assertEqual(cur, "me.efesser.flauncher")
+        s.unlock_launcher_disable()
 
     def test_speedups_and_restore_all(self):
         s = self.make()

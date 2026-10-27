@@ -168,6 +168,11 @@ class SimBackend:
             return out
         if cmd.startswith("cmd package resolve-activity"):
             return f"priority=0 preferredOrder=0\n{self.home_default}/.MainActivity\n"
+        if cmd.startswith("cmd role add-role-holder"):
+            self.home_default = cmd.split()[-1]
+            return "Success\n"
+        if cmd.startswith("cmd role get-role-holders"):
+            return self.home_default + "\n"
         if cmd.startswith("cmd package set-home-activity"):
             self.home_default = cmd.split()[-1].split("/")[0]
             return "Success\n"

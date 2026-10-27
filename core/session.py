@@ -265,7 +265,7 @@ class DebloatSession:
     def streaming_candidates(self) -> list[tuple[str, str]]:
         res = []
         for p in sorted(self.installed):
-            if "netflix" in p:
+            if "netflix" in p and not any(l == "Netflix" for l, _ in res):
                 res.append(("Netflix", p))
         if "com.google.android.youtube.tv" in self.installed:
             res.append(("YouTube", "com.google.android.youtube.tv"))
@@ -295,9 +295,23 @@ class DebloatSession:
         if "/" not in component:
             raise SessionError("I need the full component (package/Activity). Pick FLauncher on the TV.")
         self.log(f"Setting {component} as the default home screen…")
-        self.adb.shell(f"cmd package set-home-activity {component}")
+        pkg = component.split("/")[0]
+        out = self.adb.shell(f"cmd package set-home-activity {component}")
         self.sleep(1.5)
         cur = self.default_home()
+        if not (cur and pkg in cur):
+            # Many Google TV builds ignore set-home-activity (and never show the "choose a home app" dialog).
+            # Android 10+ keeps the home app as a role, so ask for that role directly.
+            self.log("The first method did not stick. Trying the Android 'home app' role…")
+            out2 = self.adb.shell(f"cmd role add-role-holder --user 0 android.app.role.HOME {pkg}")
+            self.ws.log(f"- set-home-activity said: `{out.strip()[:120]}`; role command said: `{out2.strip()[:120]}`.")
+            self.sleep(2)
+            cur = self.default_home()
+            if not (cur and pkg in cur):
+                holders = self.adb.shell("cmd role get-role-holders --user 0 android.app.role.HOME").strip()
+                self.log(f"Home role holders now: {holders or 'unknown'}.")
+                if holders and pkg in holders:
+                    cur = pkg
         self.ws.log(f"- Default home screen: `{component}` (now: `{cur}`).")
         return cur
 

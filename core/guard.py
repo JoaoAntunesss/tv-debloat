@@ -41,6 +41,8 @@ _ALLOWED = [
         r"^cmd package query-activities -a android\.intent\.action\.MAIN -c android\.intent\.category\.HOME$",
         r"^cmd package resolve-activity --brief -a android\.intent\.action\.MAIN -c android\.intent\.category\.HOME$",
         rf"^cmd package set-home-activity {_PKG}/[A-Za-z0-9_.$]+$",
+        rf"^cmd role add-role-holder --user 0 android\.app\.role\.HOME {_PKG}$",
+        r"^cmd role get-role-holders --user 0 android\.app\.role\.HOME$",
         r"^reboot$",
         # install apps (never uninstall): only files this program pushed to the temp folder
         rf"^pm install -r {_TMP_APK}$",
