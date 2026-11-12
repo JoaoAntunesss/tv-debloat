@@ -1,5 +1,7 @@
 # TV Debloat
 
+> **Arquivado.** Esta foi a primeira versão. O projeto continua em [TV-Debloat-designUNIQUE](https://github.com/JoaoAntunesss/TV-Debloat-designUNIQUE), com o TVDebloat.exe, o ecrã inicial e o Comando TV.
+
 A desktop app (Python + Tkinter) that cleans up an Android TV over wireless ADB, **reversibly**:
 ads, recommendations, telemetry and apps you never use. Dark UI with a step sidebar and a
 "next step" banner that always tells you what to do.
